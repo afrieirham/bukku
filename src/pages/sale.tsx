@@ -31,12 +31,14 @@ function Sale() {
     },
   });
 
-  if (!data) return;
-
-  const pricePerUnit = (Number(data.amount) / data.quantity).toFixed(2);
+  const pricePerUnit = data
+    ? (Number(data.amount) / data.quantity).toFixed(2)
+    : 0;
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!data) return;
 
     if (!quantity) {
       alert("Quantity cant be empty");
@@ -74,7 +76,9 @@ function Sale() {
         <p>RM{pricePerUnit}</p>
       </div>
       <div>
-        <Button type="submit">{loading ? "Loading..." : "Submit"}</Button>
+        <Button disabled={!data} type="submit">
+          {loading ? "Loading..." : "Submit"}
+        </Button>
       </div>
       <Table>
         <TableHeader>
