@@ -9,9 +9,9 @@ export const transactionRouter = createTRPCRouter({
       // get latest balance record
       const [latestBalance] = await ctx.db.balance.findMany({ take: -1 });
 
-      // add new balance record
       const amount = input.price * input.quantity;
 
+      // add new balance record
       if (!latestBalance) {
         await ctx.db.balance.create({
           data: {
@@ -22,7 +22,7 @@ export const transactionRouter = createTRPCRouter({
       } else {
         await ctx.db.balance.create({
           data: {
-            amount: latestBalance.amount + amount,
+            amount: Number(latestBalance.amount) + amount,
             quantity: latestBalance.quantity + input.quantity,
           },
         });
@@ -30,6 +30,40 @@ export const transactionRouter = createTRPCRouter({
 
       // add purchase record
       return await ctx.db.purchases.create({
+        data: {
+          price: input.price,
+          quantity: input.quantity,
+        },
+      });
+    }),
+
+  getLatestUnitCost: publicProcedure.query(async ({ ctx }) => {
+    // get latest balance record
+    const [latestBalance] = await ctx.db.balance.findMany({ take: -1 });
+    return latestBalance;
+  }),
+
+  createSale: publicProcedure
+    .input(z.object({ price: z.number(), quantity: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      // get latest balance record
+      const [latestBalance] = await ctx.db.balance.findMany({ take: -1 });
+
+      const amount = input.price * input.quantity;
+
+      if (!latestBalance) {
+        // assuming this is not possible
+      } else {
+        await ctx.db.balance.create({
+          data: {
+            amount: Number(latestBalance.amount) - amount,
+            quantity: latestBalance.quantity - input.quantity,
+          },
+        });
+      }
+
+      // add sale record
+      return await ctx.db.sales.create({
         data: {
           price: input.price,
           quantity: input.quantity,
