@@ -1,20 +1,33 @@
 import Link from "next/link";
 import React, { useState } from "react";
+
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
 import { api } from "~/utils/api";
 
 function Purchase() {
+  const ctx = api.useContext();
+
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
 
+  const { data } = api.transaction.getAllPurchases.useQuery();
   const { mutate } = api.transaction.createPurchase.useMutation({
     onSuccess: () => {
       alert("Purchase added!");
       setQuantity("");
       setPrice("");
       setLoading(false);
+      void ctx.transaction.getAllPurchases.invalidate();
     },
   });
 
@@ -71,6 +84,24 @@ function Purchase() {
       <div>
         <Button type="submit">{loading ? "Loading..." : "Submit"}</Button>
       </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>ID</TableHead>
+            <TableHead className="text-right">Price</TableHead>
+            <TableHead className="text-right">Quantity</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data?.map((item) => (
+            <TableRow key={item.id}>
+              <TableCell>{item.id}</TableCell>
+              <TableCell align="right">{Number(item.price)}</TableCell>
+              <TableCell align="right">{item.quantity}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </form>
   );
 }

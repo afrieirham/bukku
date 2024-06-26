@@ -70,4 +70,14 @@ export const transactionRouter = createTRPCRouter({
         },
       });
     }),
+
+  getAllPurchases: publicProcedure.query(async ({ ctx }) => {
+    return ctx.db.purchases.findMany({});
+  }),
+  getAllSales: publicProcedure.query(async ({ ctx }) => {
+    return ctx.db.sales.findMany({});
+  }),
+  getAllBalances: publicProcedure.query(async ({ ctx }) => {
+    return ctx.db.balance.findMany({});
+  }),
 });
