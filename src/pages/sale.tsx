@@ -1,19 +1,32 @@
 import Link from "next/link";
 import React, { useState } from "react";
+
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
 import { api } from "~/utils/api";
 
 function Sale() {
+  const ctx = api.useContext();
+
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState("");
 
+  const sales = api.transaction.getAllSales.useQuery();
   const { data } = api.transaction.getLatestUnitCost.useQuery();
   const { mutate } = api.transaction.createSale.useMutation({
     onSuccess: () => {
       alert("Sale added!");
       setQuantity("");
       setLoading(false);
+      void ctx.transaction.getAllSales.invalidate();
     },
   });
 
@@ -62,6 +75,24 @@ function Sale() {
       <div>
         <Button type="submit">{loading ? "Loading..." : "Submit"}</Button>
       </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>ID</TableHead>
+            <TableHead className="text-right">Price</TableHead>
+            <TableHead className="text-right">Quantity</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sales.data?.map((item) => (
+            <TableRow key={item.id}>
+              <TableCell>{item.id}</TableCell>
+              <TableCell align="right">{Number(item.price)}</TableCell>
+              <TableCell align="right">{item.quantity}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </form>
   );
 }
