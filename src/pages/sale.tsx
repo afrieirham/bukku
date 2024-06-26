@@ -1,5 +1,6 @@
 import Link from "next/link";
 import React, { useState } from "react";
+import { format } from "date-fns";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -79,16 +80,24 @@ function Sale() {
         <TableHeader>
           <TableRow>
             <TableHead>ID</TableHead>
-            <TableHead className="text-right">Price</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead className="text-right">Price (RM)</TableHead>
             <TableHead className="text-right">Quantity</TableHead>
+            <TableHead className="text-right">Total Cost (RM)</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sales.data?.map((item) => (
             <TableRow key={item.id}>
               <TableCell>{item.id}</TableCell>
-              <TableCell align="right">{Number(item.price)}</TableCell>
+              <TableCell>
+                {format(new Date(item.createdAt), "dd/MM/yyyy")}
+              </TableCell>
+              <TableCell align="right">{item.price.toFixed(2)}</TableCell>
               <TableCell align="right">{item.quantity}</TableCell>
+              <TableCell align="right">
+                {(item.quantity * item.price).toFixed(2)}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
