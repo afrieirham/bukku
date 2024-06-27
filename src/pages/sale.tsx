@@ -19,6 +19,7 @@ function Sale() {
 
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState("");
+  const [price, setPrice] = useState("");
 
   const sales = api.transaction.getAllSales.useQuery();
   const { data } = api.transaction.getLatestUnitCost.useQuery();
@@ -26,6 +27,7 @@ function Sale() {
     onSuccess: () => {
       alert("Sale added!");
       setQuantity("");
+      setPrice("");
       setLoading(false);
       void ctx.transaction.getAllSales.invalidate();
     },
@@ -48,6 +50,7 @@ function Sale() {
 
     mutate({
       cost: Number(costPerUnit),
+      price: Number(price),
       quantity: Number(quantity),
     });
   };
@@ -64,6 +67,10 @@ function Sale() {
       </div>
       <h1 className="font-bold underline">Sales</h1>
       <div>
+        <p>Cost Per Unit</p>
+        <p>RM{costPerUnit}</p>
+      </div>
+      <div>
         <p>Quantity</p>
         <Input
           className="max-w-sm"
@@ -72,8 +79,12 @@ function Sale() {
         />
       </div>
       <div>
-        <p>Cost Per Unit</p>
-        <p>RM{costPerUnit}</p>
+        <p>Sale Price</p>
+        <Input
+          className="max-w-sm"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+        />
       </div>
       <div>
         <Button disabled={!data} type="submit">
@@ -85,9 +96,11 @@ function Sale() {
           <TableRow>
             <TableHead>ID</TableHead>
             <TableHead>Date</TableHead>
-            <TableHead className="text-right">Price (RM)</TableHead>
             <TableHead className="text-right">Quantity</TableHead>
+            <TableHead className="text-right">Cost Per Unit (RM)</TableHead>
             <TableHead className="text-right">Total Cost (RM)</TableHead>
+            <TableHead className="text-right">Sale Per Unit (RM)</TableHead>
+            <TableHead className="text-right">Total Amount (RM)</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -97,8 +110,12 @@ function Sale() {
               <TableCell>
                 {format(new Date(item.createdAt), "dd/MM/yyyy")}
               </TableCell>
-              <TableCell align="right">{item.price.toFixed(2)}</TableCell>
               <TableCell align="right">{item.quantity}</TableCell>
+              <TableCell align="right">{item.cost.toFixed(2)}</TableCell>
+              <TableCell align="right">
+                {(item.quantity * item.cost).toFixed(2)}
+              </TableCell>
+              <TableCell align="right">{item.price.toFixed(2)}</TableCell>
               <TableCell align="right">
                 {(item.quantity * item.price).toFixed(2)}
               </TableCell>
