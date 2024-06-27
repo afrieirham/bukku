@@ -58,11 +58,11 @@ function Sale() {
       className="mx-auto flex w-full max-w-screen-lg flex-col space-y-4 pt-16 text-sm"
     >
       <div>
-        <Button variant="ghost" asChild>
+        <Button variant="link" className="px-0" asChild>
           <Link href="/">← back</Link>
         </Button>
       </div>
-      <h1>Sale</h1>
+      <h1 className="font-bold underline">Sales</h1>
       <div>
         <p>Quantity</p>
         <Input
