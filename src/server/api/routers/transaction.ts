@@ -44,12 +44,12 @@ export const transactionRouter = createTRPCRouter({
   }),
 
   createSale: publicProcedure
-    .input(z.object({ price: z.number(), quantity: z.number() }))
+    .input(z.object({ cost: z.number(), quantity: z.number() }))
     .mutation(async ({ ctx, input }) => {
       // get latest balance record
       const [latestBalance] = await ctx.db.balance.findMany({ take: -1 });
 
-      const amount = input.price * input.quantity;
+      const amount = input.cost * input.quantity;
 
       if (!latestBalance) {
         // assuming this is not possible
@@ -65,7 +65,8 @@ export const transactionRouter = createTRPCRouter({
       // add sale record
       return await ctx.db.sales.create({
         data: {
-          price: input.price,
+          cost: input.cost,
+          price: input.cost * input.quantity,
           quantity: input.quantity,
         },
       });
@@ -81,6 +82,7 @@ export const transactionRouter = createTRPCRouter({
     return (await ctx.db.sales.findMany({})).map((item) => ({
       ...item,
       price: Number(item.price),
+      cost: Number(item.cost),
     }));
   }),
   getAllBalances: publicProcedure.query(async ({ ctx }) => {

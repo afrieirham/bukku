@@ -21,6 +21,7 @@ model Purchases {
 model Sales {
     id        Int      @id @default(autoincrement())
     quantity  Int
+    cost      Decimal
     price     Decimal
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt

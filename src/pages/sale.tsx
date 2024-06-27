@@ -31,7 +31,7 @@ function Sale() {
     },
   });
 
-  const pricePerUnit = data
+  const costPerUnit = data
     ? (Number(data.amount) / data.quantity).toFixed(2)
     : 0;
 
@@ -47,7 +47,7 @@ function Sale() {
     }
 
     mutate({
-      price: Number(pricePerUnit),
+      cost: Number(costPerUnit),
       quantity: Number(quantity),
     });
   };
@@ -72,8 +72,8 @@ function Sale() {
         />
       </div>
       <div>
-        <p>Price Per Unit</p>
-        <p>RM{pricePerUnit}</p>
+        <p>Cost Per Unit</p>
+        <p>RM{costPerUnit}</p>
       </div>
       <div>
         <Button disabled={!data} type="submit">
