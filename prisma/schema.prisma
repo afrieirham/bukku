@@ -22,7 +22,6 @@ model Sales {
     id        Int      @id @default(autoincrement())
     quantity  Int
     cost      Decimal
-    amount    Decimal
     price     Decimal
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt

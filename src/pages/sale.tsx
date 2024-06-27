@@ -98,8 +98,8 @@ function Sale() {
             <TableHead>Date</TableHead>
             <TableHead className="text-right">Quantity</TableHead>
             <TableHead className="text-right">Cost Per Unit (RM)</TableHead>
-            <TableHead className="text-right">Total Cost (RM)</TableHead>
             <TableHead className="text-right">Sale Per Unit (RM)</TableHead>
+            <TableHead className="text-right">Total Cost (RM)</TableHead>
             <TableHead className="text-right">Total Amount (RM)</TableHead>
           </TableRow>
         </TableHeader>
@@ -112,10 +112,10 @@ function Sale() {
               </TableCell>
               <TableCell align="right">{item.quantity}</TableCell>
               <TableCell align="right">{item.cost.toFixed(2)}</TableCell>
+              <TableCell align="right">{item.price.toFixed(2)}</TableCell>
               <TableCell align="right">
                 {(item.quantity * item.cost).toFixed(2)}
               </TableCell>
-              <TableCell align="right">{item.price.toFixed(2)}</TableCell>
               <TableCell align="right">
                 {(item.quantity * item.price).toFixed(2)}
               </TableCell>

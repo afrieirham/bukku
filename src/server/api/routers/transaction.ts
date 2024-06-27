@@ -72,7 +72,6 @@ export const transactionRouter = createTRPCRouter({
       return await ctx.db.sales.create({
         data: {
           cost: input.cost,
-          amount,
           price: input.price,
           quantity: input.quantity,
         },
@@ -88,7 +87,6 @@ export const transactionRouter = createTRPCRouter({
   getAllSales: publicProcedure.query(async ({ ctx }) => {
     return (await ctx.db.sales.findMany({})).map((item) => ({
       ...item,
-      amount: Number(item.amount),
       cost: Number(item.cost),
       price: Number(item.price),
     }));
