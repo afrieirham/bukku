@@ -46,6 +46,17 @@ export const transactionRouter = createTRPCRouter({
       });
     }),
 
+  getAllPurchases: publicProcedure.query(async ({ ctx }) => {
+    return (
+      await ctx.db.transactions.findMany({ where: { type: "purchase" } })
+    ).map((item) => ({
+      ...item,
+      cost: Number(item.cost),
+      totalAsset: Number(item.totalAsset),
+      costPerUnit: Number(item.costPerUnit),
+    }));
+  }),
+
   // getLatestUnitCost: publicProcedure.query(async ({ ctx }) => {
   //   // get latest balance record
   //   const [latestBalance] = await ctx.db.balance.findMany({ take: -1 });
@@ -86,13 +97,6 @@ export const transactionRouter = createTRPCRouter({
   //       },
   //     });
   //   }),
-
-  // getAllPurchases: publicProcedure.query(async ({ ctx }) => {
-  //   return (await ctx.db.purchases.findMany({})).map((item) => ({
-  //     ...item,
-  //     price: Number(item.price),
-  //   }));
-  // }),
 
   // getAllSales: publicProcedure.query(async ({ ctx }) => {
   //   return (await ctx.db.sales.findMany({})).map((item) => ({

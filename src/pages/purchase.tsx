@@ -21,14 +21,14 @@ function Purchase() {
   const [quantity, setQuantity] = useState("");
   const [cost, setCost] = useState("");
 
-  // const { data } = api.transaction.getAllPurchases.useQuery();
+  const { data } = api.transaction.getAllPurchases.useQuery();
   const { mutate } = api.transaction.createPurchase.useMutation({
     onSuccess: () => {
       alert("Purchase added!");
       setQuantity("");
       setCost("");
       setLoading(false);
-      // void ctx.transaction.getAllPurchases.invalidate();
+      void ctx.transaction.getAllPurchases.invalidate();
     },
   });
 
@@ -85,7 +85,7 @@ function Purchase() {
       <div>
         <Button type="submit">{loading ? "Loading..." : "Submit"}</Button>
       </div>
-      {/* <Table>
+      <Table>
         <TableHeader>
           <TableRow>
             <TableHead>ID</TableHead>
@@ -102,15 +102,15 @@ function Purchase() {
               <TableCell>
                 {format(new Date(item.createdAt), "dd/MM/yyyy")}
               </TableCell>
-              <TableCell align="right">{item.price.toFixed(2)}</TableCell>
+              <TableCell align="right">{item.cost.toFixed(2)}</TableCell>
               <TableCell align="right">{item.quantity}</TableCell>
               <TableCell align="right">
-                {(item.quantity * item.price).toFixed(2)}
+                {(item.quantity * item.cost).toFixed(2)}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
-      </Table> */}
+      </Table>
     </form>
   );
 }
