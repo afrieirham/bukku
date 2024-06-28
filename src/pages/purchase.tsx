@@ -117,10 +117,14 @@ function Purchase() {
                 <Button
                   type="button"
                   onClick={() => {
-                    const quantity = Number(prompt("qty"));
+                    const quantity = Number(
+                      prompt("Quantity?", String(item.quantity)),
+                    );
+                    const cost = Number(prompt("Cost?", String(item.cost)));
                     update.mutate({
                       id: item.id,
                       quantity,
+                      cost,
                       type: "purchase",
                     });
                   }}

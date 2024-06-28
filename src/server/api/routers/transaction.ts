@@ -3,7 +3,12 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { type dbType } from "~/server/db";
 
-const updatePurchase = async (db: dbType, id: number, quantity: number) => {
+const updatePurchase = async (
+  db: dbType,
+  id: number,
+  quantity: number,
+  cost: number,
+) => {
   const currentTransaction = await db.transactions.findFirst({
     where: { id: id },
   });
@@ -13,7 +18,7 @@ const updatePurchase = async (db: dbType, id: number, quantity: number) => {
     return null;
   }
 
-  const currentAsset = quantity * Number(currentTransaction.cost);
+  const currentAsset = quantity * cost;
   let newTotalQuantity;
   let newTotalAsset;
 
@@ -40,6 +45,7 @@ const updatePurchase = async (db: dbType, id: number, quantity: number) => {
     where: { id: id },
     data: {
       quantity: quantity,
+      cost: cost,
       totalQuantity: newTotalQuantity,
       totalAsset: newTotalAsset,
       costPerUnit: newTotalAsset / newTotalQuantity,
@@ -211,27 +217,35 @@ export const transactionRouter = createTRPCRouter({
   }),
 
   updateTransaction: publicProcedure
-    .input(z.object({ id: z.number(), quantity: z.number(), type: z.string() }))
+    .input(
+      z.object({
+        id: z.number(),
+        quantity: z.number(),
+        cost: z.number(),
+        type: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       let id: number | null = input.id;
       let quantity = input.quantity;
+      let cost = input.cost;
       let type: string | null = input.type;
 
       let cur = null;
 
       while (id) {
         if (type === "purchase") {
-          await updatePurchase(ctx.db, id, quantity);
+          await updatePurchase(ctx.db, id, quantity, cost);
         } else {
           await updateSale(ctx.db, id, quantity);
         }
 
-        // start check if has next
         cur = await ctx.db.transactions.findFirst({ where: { id } });
         if (!cur) {
           return;
         }
 
+        // start check if has next
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const nextId: number | null = cur.nextId;
 
@@ -256,6 +270,7 @@ export const transactionRouter = createTRPCRouter({
 
         id = nextId;
         quantity = next.quantity;
+        cost = Number(next.cost);
         type = next.type;
       }
 
