@@ -211,7 +211,7 @@ const defaultInsert = async (db: dbType, cost: number, quantity: number) => {
   const totalCost = cost * quantity;
 
   // get latest transaction record
-  const [lastTrx] = await db.transactions.findMany({ take: -1 });
+  const lastTrx = await getLastTransaction(db);
 
   // first transaction
   if (!lastTrx) {
@@ -255,6 +255,10 @@ const defaultInsert = async (db: dbType, cost: number, quantity: number) => {
   });
 
   return newPurchase;
+};
+
+const getLastTransaction = async (db: dbType) => {
+  return await db.transactions.findFirst({ where: { nextId: null } });
 };
 
 export const transactionRouter = createTRPCRouter({
@@ -406,7 +410,7 @@ export const transactionRouter = createTRPCRouter({
     .input(z.object({ cost: z.number(), quantity: z.number() }))
     .mutation(async ({ ctx, input }) => {
       // get latest transaction record
-      const [lastTrx] = await ctx.db.transactions.findMany({ take: -1 });
+      const lastTrx = await getLastTransaction(ctx.db);
 
       if (!lastTrx) {
         // not possible
@@ -442,10 +446,7 @@ export const transactionRouter = createTRPCRouter({
     }),
 
   getLatestUnitCost: publicProcedure.query(async ({ ctx }) => {
-    // get latest balance record
-    const [lastTrx] = await ctx.db.transactions.findMany({ take: -1 });
-
-    return lastTrx;
+    return getLastTransaction(ctx.db);
   }),
 
   getAllSales: publicProcedure.query(async ({ ctx }) => {
