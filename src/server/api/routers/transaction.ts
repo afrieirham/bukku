@@ -123,10 +123,56 @@ export const transactionRouter = createTRPCRouter({
     }));
   }),
 
-  // getAllBalances: publicProcedure.query(async ({ ctx }) => {
-  //   return (await ctx.db.balance.findMany({})).map((item) => ({
-  //     ...item,
-  //     amount: Number(item.amount),
-  //   }));
-  // }),
+  updatePurchase: publicProcedure
+    .input(z.object({ id: z.number(), quantity: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const currentTransaction = await ctx.db.transactions.findFirst({
+        where: { id: input.id },
+      });
+
+      // not possible but make typescript happy
+      if (!currentTransaction) {
+        return;
+      }
+
+      // transaction with previous
+      if (currentTransaction.previousId) {
+        const prevTransaction = await ctx.db.transactions.findFirst({
+          where: { id: currentTransaction.previousId },
+        });
+
+        // not possible but make typescript happy
+        if (!prevTransaction) {
+          return;
+        }
+
+        const newTotalQuantity = prevTransaction.totalQuantity + input.quantity;
+
+        const currentAsset = input.quantity * Number(currentTransaction.cost);
+        const newTotalAsset = Number(prevTransaction.totalAsset) + currentAsset;
+
+        await ctx.db.transactions.update({
+          where: { id: input.id },
+          data: {
+            quantity: input.quantity,
+            totalQuantity: newTotalQuantity,
+            totalAsset: newTotalAsset,
+            costPerUnit: newTotalAsset / newTotalQuantity,
+          },
+        });
+      } else {
+        const newTotalQuantity = input.quantity;
+        const newTotalAsset = input.quantity * Number(currentTransaction.cost);
+
+        await ctx.db.transactions.update({
+          where: { id: input.id },
+          data: {
+            quantity: input.quantity,
+            totalQuantity: newTotalQuantity,
+            totalAsset: newTotalAsset,
+            costPerUnit: newTotalAsset / newTotalQuantity,
+          },
+        });
+      }
+    }),
 });

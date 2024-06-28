@@ -32,6 +32,8 @@ function Purchase() {
     },
   });
 
+  const update = api.transaction.updatePurchase.useMutation({});
+
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -106,6 +108,16 @@ function Purchase() {
               <TableCell align="right">{item.quantity}</TableCell>
               <TableCell align="right">
                 {(item.quantity * item.cost).toFixed(2)}
+              </TableCell>
+              <TableCell>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    update.mutate({ id: item.id, quantity: 10 });
+                  }}
+                >
+                  Update
+                </Button>
               </TableCell>
             </TableRow>
           ))}
