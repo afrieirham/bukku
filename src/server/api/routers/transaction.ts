@@ -6,7 +6,7 @@ export const transactionRouter = createTRPCRouter({
   createPurchase: publicProcedure
     .input(z.object({ cost: z.number(), quantity: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      // get latest balance record
+      // get latest transaction record
       const [lastTrx] = await ctx.db.transactions.findMany({ take: -1 });
 
       const totalCost = input.cost * input.quantity;
@@ -20,8 +20,8 @@ export const transactionRouter = createTRPCRouter({
             cost: input.cost,
 
             totalQuantity: input.quantity,
-            totalAsset: totalCost,
-            costPerUnit: totalCost / input.quantity,
+            totalAsset: totalCost.toFixed(2),
+            costPerUnit: (totalCost / input.quantity).toFixed(2),
 
             previousId: null,
           },
@@ -38,8 +38,8 @@ export const transactionRouter = createTRPCRouter({
           cost: input.cost,
 
           totalQuantity,
-          totalAsset,
-          costPerUnit: totalAsset / totalQuantity,
+          totalAsset: totalAsset.toFixed(2),
+          costPerUnit: (totalAsset / totalQuantity).toFixed(2),
 
           previousId: lastTrx.id,
         },
@@ -57,54 +57,54 @@ export const transactionRouter = createTRPCRouter({
     }));
   }),
 
-  // getLatestUnitCost: publicProcedure.query(async ({ ctx }) => {
-  //   // get latest balance record
-  //   const [latestBalance] = await ctx.db.balance.findMany({ take: -1 });
-  //   return latestBalance;
-  // }),
+  createSale: publicProcedure
+    .input(z.object({ cost: z.number(), quantity: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      // get latest transaction record
+      const [lastTrx] = await ctx.db.transactions.findMany({ take: -1 });
 
-  // createSale: publicProcedure
-  //   .input(
-  //     z.object({
-  //       cost: z.number(),
-  //       quantity: z.number(),
-  //       price: z.number(),
-  //     }),
-  //   )
-  //   .mutation(async ({ ctx, input }) => {
-  //     // get latest balance record
-  //     const [latestBalance] = await ctx.db.balance.findMany({ take: -1 });
+      if (!lastTrx) {
+        // not possible
+      } else {
+        const totalCost = input.cost * input.quantity;
 
-  //     const amount = input.cost * input.quantity;
+        const totalQuantity = lastTrx.totalQuantity - input.quantity;
+        const totalAsset = Number(lastTrx.totalAsset) - totalCost;
 
-  //     if (!latestBalance) {
-  //       // assuming this is not possible
-  //     } else {
-  //       await ctx.db.balance.create({
-  //         data: {
-  //           amount: Number(latestBalance.amount) - amount,
-  //           quantity: latestBalance.quantity - input.quantity,
-  //         },
-  //       });
-  //     }
+        return await ctx.db.transactions.create({
+          data: {
+            type: "sale",
+            quantity: input.quantity,
+            cost: input.cost,
 
-  //     // add sale record
-  //     return await ctx.db.sales.create({
-  //       data: {
-  //         cost: input.cost,
-  //         price: input.price,
-  //         quantity: input.quantity,
-  //       },
-  //     });
-  //   }),
+            totalQuantity,
+            totalAsset: totalAsset.toFixed(2),
+            costPerUnit:
+              totalQuantity === 0 ? 0 : (totalAsset / totalQuantity).toFixed(2),
 
-  // getAllSales: publicProcedure.query(async ({ ctx }) => {
-  //   return (await ctx.db.sales.findMany({})).map((item) => ({
-  //     ...item,
-  //     cost: Number(item.cost),
-  //     price: Number(item.price),
-  //   }));
-  // }),
+            previousId: lastTrx.id,
+          },
+        });
+      }
+    }),
+
+  getLatestUnitCost: publicProcedure.query(async ({ ctx }) => {
+    // get latest balance record
+    const [lastTrx] = await ctx.db.transactions.findMany({ take: -1 });
+
+    return lastTrx;
+  }),
+
+  getAllSales: publicProcedure.query(async ({ ctx }) => {
+    return (
+      await ctx.db.transactions.findMany({ where: { type: "sale" } })
+    ).map((item) => ({
+      ...item,
+      cost: Number(item.cost),
+      totalAsset: Number(item.totalAsset),
+      costPerUnit: Number(item.costPerUnit),
+    }));
+  }),
 
   // getAllBalances: publicProcedure.query(async ({ ctx }) => {
   //   return (await ctx.db.balance.findMany({})).map((item) => ({

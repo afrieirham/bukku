@@ -19,7 +19,7 @@ function Sale() {
 
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState("");
-  const [price, setPrice] = useState("");
+  // const [price, setPrice] = useState("");
 
   const sales = api.transaction.getAllSales.useQuery();
   const { data } = api.transaction.getLatestUnitCost.useQuery();
@@ -27,15 +27,14 @@ function Sale() {
     onSuccess: () => {
       alert("Sale added!");
       setQuantity("");
-      setPrice("");
+      // setPrice("");
       setLoading(false);
+      void ctx.transaction.getLatestUnitCost.invalidate();
       void ctx.transaction.getAllSales.invalidate();
     },
   });
 
-  const costPerUnit = data
-    ? (Number(data.amount) / data.quantity).toFixed(2)
-    : 0;
+  const costPerUnit = data?.costPerUnit;
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -50,7 +49,6 @@ function Sale() {
 
     mutate({
       cost: Number(costPerUnit),
-      price: Number(price),
       quantity: Number(quantity),
     });
   };
@@ -68,7 +66,11 @@ function Sale() {
       <h1 className="font-bold underline">Sales</h1>
       <div>
         <p>Cost Per Unit</p>
-        <p>RM{costPerUnit}</p>
+        <p>RM{Number(costPerUnit)}</p>
+      </div>
+      <div>
+        <p>Available Quantity</p>
+        <p>{Number(data?.totalQuantity)}</p>
       </div>
       <div>
         <p>Quantity</p>
@@ -78,14 +80,14 @@ function Sale() {
           onChange={(e) => setQuantity(e.target.value)}
         />
       </div>
-      <div>
+      {/* <div>
         <p>Sale Price</p>
         <Input
           className="max-w-sm"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
         />
-      </div>
+      </div> */}
       <div>
         <Button disabled={!data} type="submit">
           {loading ? "Loading..." : "Submit"}
@@ -98,9 +100,9 @@ function Sale() {
             <TableHead>Date</TableHead>
             <TableHead className="text-right">Quantity</TableHead>
             <TableHead className="text-right">Cost Per Unit (RM)</TableHead>
-            <TableHead className="text-right">Sale Per Unit (RM)</TableHead>
+            {/* <TableHead className="text-right">Sale Per Unit (RM)</TableHead> */}
             <TableHead className="text-right">Total Cost (RM)</TableHead>
-            <TableHead className="text-right">Total Amount (RM)</TableHead>
+            {/* <TableHead className="text-right">Total Amount (RM)</TableHead> */}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -112,13 +114,13 @@ function Sale() {
               </TableCell>
               <TableCell align="right">{item.quantity}</TableCell>
               <TableCell align="right">{item.cost.toFixed(2)}</TableCell>
-              <TableCell align="right">{item.price.toFixed(2)}</TableCell>
+              {/* <TableCell align="right">{item.price.toFixed(2)}</TableCell> */}
               <TableCell align="right">
                 {(item.quantity * item.cost).toFixed(2)}
               </TableCell>
-              <TableCell align="right">
+              {/* <TableCell align="right">
                 {(item.quantity * item.price).toFixed(2)}
-              </TableCell>
+              </TableCell> */}
             </TableRow>
           ))}
         </TableBody>
