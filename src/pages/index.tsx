@@ -12,7 +12,7 @@ export default function Home() {
       </Head>
       <main className="mx-auto flex w-full max-w-screen-lg flex-col justify-center pt-16">
         <h1 className="font-bold underline">Pages</h1>
-        <ul className="list-disc">
+        <ul className="list-inside list-disc">
           <li>
             <Button size="sm" variant="link" className="px-0" asChild>
               <Link href="/purchase">Purchases ↗</Link>

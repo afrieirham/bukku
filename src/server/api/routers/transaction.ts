@@ -207,18 +207,79 @@ const updateTransaction = async (
   return;
 };
 
+const defaultInsert = async (db: dbType, cost: number, quantity: number) => {
+  const totalCost = cost * quantity;
+
+  // get latest transaction record
+  const [lastTrx] = await db.transactions.findMany({ take: -1 });
+
+  // first transaction
+  if (!lastTrx) {
+    return await db.transactions.create({
+      data: {
+        type: "purchase",
+        quantity: quantity,
+        cost: cost,
+
+        totalQuantity: quantity,
+        totalAsset: totalCost.toFixed(2),
+        costPerUnit: (totalCost / quantity).toFixed(2),
+
+        previousId: null,
+      },
+    });
+  }
+
+  const totalQuantity = lastTrx.totalQuantity + quantity;
+  const totalAsset = Number(lastTrx.totalAsset) + totalCost;
+
+  // add new purchase
+  const newPurchase = await db.transactions.create({
+    data: {
+      type: "purchase",
+      quantity: quantity,
+      cost: cost,
+
+      totalQuantity,
+      totalAsset: totalAsset.toFixed(2),
+      costPerUnit: (totalAsset / totalQuantity).toFixed(2),
+
+      previousId: lastTrx.id,
+    },
+  });
+
+  // update previous's next
+  await db.transactions.update({
+    where: { id: lastTrx.id },
+    data: { nextId: newPurchase.id },
+  });
+
+  return newPurchase;
+};
+
 export const transactionRouter = createTRPCRouter({
   createPurchase: publicProcedure
-    .input(z.object({ cost: z.number(), quantity: z.number() }))
+    .input(
+      z.object({
+        cost: z.number(),
+        quantity: z.number(),
+        position: z.number(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      // get latest transaction record
-      const [lastTrx] = await ctx.db.transactions.findMany({ take: -1 });
-
       const totalCost = input.cost * input.quantity;
 
-      // first transaction
-      if (!lastTrx) {
-        return await ctx.db.transactions.create({
+      // insert to top
+      if (input.position === -1) {
+        const head = await ctx.db.transactions.findFirst({
+          where: { previousId: null },
+        });
+        if (!head) {
+          return await defaultInsert(ctx.db, input.cost, input.quantity);
+        }
+
+        // create and update my next to head id
+        const newPurchase = await ctx.db.transactions.create({
           data: {
             type: "purchase",
             quantity: input.quantity,
@@ -228,36 +289,106 @@ export const transactionRouter = createTRPCRouter({
             totalAsset: totalCost.toFixed(2),
             costPerUnit: (totalCost / input.quantity).toFixed(2),
 
+            nextId: head.id,
+          },
+        });
+        // update top prev to my id
+        await ctx.db.transactions.update({
+          where: { id: head.id },
+          data: { previousId: newPurchase.id },
+        });
+
+        return updateTransaction(
+          ctx.db,
+          head.id,
+          head.quantity,
+          Number(head.cost),
+          head.type,
+        );
+      }
+
+      if (input.position > 0) {
+        // check if position is tail
+        const newPrevious = await ctx.db.transactions.findFirst({
+          where: { id: input.position },
+        });
+
+        if (!newPrevious) {
+          return;
+        }
+
+        if (!newPrevious.nextId) {
+          return await defaultInsert(ctx.db, input.cost, input.quantity);
+        }
+
+        // connect to list
+        // 1. update my previous to previous id
+        // 2. update my next to previous's next
+        const newPurchasePrevious = newPrevious.id;
+        const newPurchaseNext = newPrevious.nextId;
+
+        // clear pointers
+        // 1. clear previous's next pointer
+        await ctx.db.transactions.update({
+          where: { id: newPrevious.id },
+          data: {
+            nextId: null,
+          },
+        });
+        // 2. clear next's previous pointer
+        await ctx.db.transactions.update({
+          where: { id: newPrevious.nextId },
+          data: {
             previousId: null,
           },
         });
+
+        const totalQuantity = newPrevious.totalQuantity + input.quantity;
+        const totalAsset = Number(newPrevious.totalAsset) + totalCost;
+
+        const newPurchase = await ctx.db.transactions.create({
+          data: {
+            type: "purchase",
+            quantity: input.quantity,
+            cost: input.cost,
+
+            totalQuantity,
+            totalAsset,
+            costPerUnit: totalAsset / totalQuantity,
+
+            previousId: newPurchasePrevious,
+            nextId: newPurchaseNext,
+          },
+        });
+
+        // update previous and next pointer
+        // 1. previous's next = my id
+        await ctx.db.transactions.update({
+          where: { id: newPrevious.id },
+          data: {
+            nextId: newPurchase.id,
+          },
+        });
+
+        // 2. next's previous = my id
+        await ctx.db.transactions.update({
+          where: { id: newPrevious.nextId },
+          data: {
+            previousId: newPurchase.id,
+          },
+        });
+
+        await updateTransaction(
+          ctx.db,
+          newPurchase.id,
+          newPurchase.quantity,
+          Number(newPurchase.cost),
+          newPurchase.type,
+        );
+        return;
       }
 
-      const totalQuantity = lastTrx.totalQuantity + input.quantity;
-      const totalAsset = Number(lastTrx.totalAsset) + totalCost;
-
-      // add new purchase
-      const newPurchase = await ctx.db.transactions.create({
-        data: {
-          type: "purchase",
-          quantity: input.quantity,
-          cost: input.cost,
-
-          totalQuantity,
-          totalAsset: totalAsset.toFixed(2),
-          costPerUnit: (totalAsset / totalQuantity).toFixed(2),
-
-          previousId: lastTrx.id,
-        },
-      });
-
-      // update previous's next
-      await ctx.db.transactions.update({
-        where: { id: lastTrx.id },
-        data: { nextId: newPurchase.id },
-      });
-
-      return newPurchase;
+      return await defaultInsert(ctx.db, input.cost, input.quantity);
     }),
 
   getAllPurchases: publicProcedure.query(async ({ ctx }) => {

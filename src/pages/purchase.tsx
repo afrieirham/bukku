@@ -20,6 +20,7 @@ function Purchase() {
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState("");
   const [cost, setCost] = useState("");
+  const [position, setPosition] = useState("");
 
   const { data } = api.transaction.getAllPurchases.useQuery();
   const { mutate } = api.transaction.createPurchase.useMutation({
@@ -27,6 +28,7 @@ function Purchase() {
       alert("Purchase added!");
       setQuantity("");
       setCost("");
+      setPosition("");
       setLoading(false);
       void ctx.transaction.getAllPurchases.invalidate();
     },
@@ -63,6 +65,7 @@ function Purchase() {
     mutate({
       cost: Number(cost),
       quantity: Number(quantity),
+      position: Number(position),
     });
   };
 
@@ -91,6 +94,19 @@ function Purchase() {
           className="max-w-sm"
           value={cost}
           onChange={(e) => setCost(e.target.value)}
+        />
+      </div>
+      <div>
+        <p>Position</p>
+        <ul className="list-inside list-disc text-xs text-gray-500">
+          <li>Enter transaction ID to insert after it</li>
+          <li>Leave empty for default</li>
+          <li>-1 to add to the top</li>
+        </ul>
+        <Input
+          className="max-w-sm"
+          value={position}
+          onChange={(e) => setPosition(e.target.value)}
         />
       </div>
       <div>
