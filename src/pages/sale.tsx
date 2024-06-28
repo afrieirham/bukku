@@ -26,6 +26,11 @@ function Sale() {
       void ctx.transaction.getAllSales.invalidate();
     },
   });
+  const del = api.transaction.deletePurchase.useMutation({
+    onSuccess: () => {
+      void ctx.transaction.getAllSales.invalidate();
+    },
+  });
   const sales = api.transaction.getAllSales.useQuery();
   const { data } = api.transaction.getLatestUnitCost.useQuery();
   const { mutate } = api.transaction.createSale.useMutation({
@@ -128,17 +133,30 @@ function Sale() {
               </TableCell> */}
               <TableCell>
                 <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => {
                     const quantity = Number(prompt("qty"));
                     update.mutate({
                       id: item.id,
                       quantity,
+                      cost: 0,
                       type: "sale",
                     });
                   }}
                 >
                   Update
+                </Button>
+              </TableCell>
+              <TableCell>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={() => {
+                    del.mutate({ id: item.id });
+                  }}
+                >
+                  Delete
                 </Button>
               </TableCell>
             </TableRow>
