@@ -47,6 +47,48 @@ const updatePurchase = async (db: dbType, id: number, quantity: number) => {
   });
 };
 
+const updateSale = async (db: dbType, id: number, quantity: number) => {
+  const currentTransaction = await db.transactions.findFirst({
+    where: { id: id },
+  });
+
+  // not possible but make typescript happy
+  if (!currentTransaction) {
+    return null;
+  }
+
+  // not possible but make typescript happy
+  if (!currentTransaction.previousId) {
+    return null;
+  }
+
+  const prevTransaction = await db.transactions.findFirst({
+    where: { id: currentTransaction.previousId },
+  });
+
+  // not possible but make typescript happy
+  if (!prevTransaction) {
+    return null;
+  }
+
+  const currentAsset = Number(currentTransaction.cost) * quantity;
+  const newTotalQuantity = prevTransaction.totalQuantity - quantity;
+  const newTotalAsset = Number(prevTransaction.totalAsset) - currentAsset;
+
+  return await db.transactions.update({
+    where: { id: id },
+    data: {
+      quantity: quantity,
+
+      cost: prevTransaction.costPerUnit,
+      totalQuantity: newTotalQuantity,
+      totalAsset: newTotalAsset,
+      costPerUnit:
+        newTotalQuantity === 0 ? 0 : newTotalAsset / newTotalQuantity,
+    },
+  });
+};
+
 export const transactionRouter = createTRPCRouter({
   createPurchase: publicProcedure
     .input(z.object({ cost: z.number(), quantity: z.number() }))
@@ -168,16 +210,21 @@ export const transactionRouter = createTRPCRouter({
     }));
   }),
 
-  updatePurchase: publicProcedure
-    .input(z.object({ id: z.number(), quantity: z.number() }))
+  updateTransaction: publicProcedure
+    .input(z.object({ id: z.number(), quantity: z.number(), type: z.string() }))
     .mutation(async ({ ctx, input }) => {
       let id: number | null = input.id;
       let quantity = input.quantity;
+      let type: string | null = input.type;
 
       let cur = null;
 
       while (id) {
-        await updatePurchase(ctx.db, id, quantity);
+        if (type === "purchase") {
+          await updatePurchase(ctx.db, id, quantity);
+        } else {
+          await updateSale(ctx.db, id, quantity);
+        }
 
         // start check if has next
         cur = await ctx.db.transactions.findFirst({ where: { id } });
@@ -209,6 +256,7 @@ export const transactionRouter = createTRPCRouter({
 
         id = nextId;
         quantity = next.quantity;
+        type = next.type;
       }
 
       return;

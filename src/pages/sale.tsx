@@ -21,6 +21,11 @@ function Sale() {
   const [quantity, setQuantity] = useState("");
   // const [price, setPrice] = useState("");
 
+  const update = api.transaction.updateTransaction.useMutation({
+    onSuccess: () => {
+      void ctx.transaction.getAllSales.invalidate();
+    },
+  });
   const sales = api.transaction.getAllSales.useQuery();
   const { data } = api.transaction.getLatestUnitCost.useQuery();
   const { mutate } = api.transaction.createSale.useMutation({
@@ -121,6 +126,21 @@ function Sale() {
               {/* <TableCell align="right">
                 {(item.quantity * item.price).toFixed(2)}
               </TableCell> */}
+              <TableCell>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const quantity = Number(prompt("qty"));
+                    update.mutate({
+                      id: item.id,
+                      quantity,
+                      type: "sale",
+                    });
+                  }}
+                >
+                  Update
+                </Button>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

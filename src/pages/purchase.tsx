@@ -32,7 +32,11 @@ function Purchase() {
     },
   });
 
-  const update = api.transaction.updatePurchase.useMutation({});
+  const update = api.transaction.updateTransaction.useMutation({
+    onSuccess: () => {
+      void ctx.transaction.getAllPurchases.invalidate();
+    },
+  });
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -113,7 +117,12 @@ function Purchase() {
                 <Button
                   type="button"
                   onClick={() => {
-                    update.mutate({ id: item.id, quantity: 10 });
+                    const quantity = Number(prompt("qty"));
+                    update.mutate({
+                      id: item.id,
+                      quantity,
+                      type: "purchase",
+                    });
                   }}
                 >
                   Update
