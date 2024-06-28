@@ -10,27 +10,24 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
-model Purchases {
-    id        Int      @id @default(autoincrement())
-    quantity  Int
-    price     Decimal
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-}
+model Transactions {
+    id Int @id @default(autoincrement())
 
-model Sales {
-    id        Int      @id @default(autoincrement())
-    quantity  Int
-    cost      Decimal
-    price     Decimal
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-}
+    // transaction property
+    type     String
+    quantity Int
+    cost     Decimal
 
-model Balance {
-    id        Int      @id @default(autoincrement())
-    quantity  Int
-    amount    Decimal
+    // inventory (calculated property)
+    totalQuantity Int
+    totalAsset    Decimal
+    costPerUnit   Decimal
+
+    // pointer to previous transaction
+    previousId Int?          @unique
+    previous   Transactions? @relation("BasedOn", fields: [previousId], references: [id])
+    next       Transactions? @relation("BasedOn")
+
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 }

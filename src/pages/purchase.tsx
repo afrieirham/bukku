@@ -19,16 +19,16 @@ function Purchase() {
 
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState("");
-  const [price, setPrice] = useState("");
+  const [cost, setCost] = useState("");
 
-  const { data } = api.transaction.getAllPurchases.useQuery();
+  // const { data } = api.transaction.getAllPurchases.useQuery();
   const { mutate } = api.transaction.createPurchase.useMutation({
     onSuccess: () => {
       alert("Purchase added!");
       setQuantity("");
-      setPrice("");
+      setCost("");
       setLoading(false);
-      void ctx.transaction.getAllPurchases.invalidate();
+      // void ctx.transaction.getAllPurchases.invalidate();
     },
   });
 
@@ -37,7 +37,7 @@ function Purchase() {
 
     setLoading(true);
 
-    if (!price) {
+    if (!cost) {
       alert("Price cant be empty");
       setLoading(false);
       return;
@@ -50,7 +50,7 @@ function Purchase() {
     }
 
     mutate({
-      price: Number(price),
+      cost: Number(cost),
       quantity: Number(quantity),
     });
   };
@@ -78,14 +78,14 @@ function Purchase() {
         <p>Price Per Unit</p>
         <Input
           className="max-w-sm"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
+          value={cost}
+          onChange={(e) => setCost(e.target.value)}
         />
       </div>
       <div>
         <Button type="submit">{loading ? "Loading..." : "Submit"}</Button>
       </div>
-      <Table>
+      {/* <Table>
         <TableHeader>
           <TableRow>
             <TableHead>ID</TableHead>
@@ -110,7 +110,7 @@ function Purchase() {
             </TableRow>
           ))}
         </TableBody>
-      </Table>
+      </Table> */}
     </form>
   );
 }
