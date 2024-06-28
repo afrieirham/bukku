@@ -1,6 +1,51 @@
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { type dbType } from "~/server/db";
+
+const updatePurchase = async (db: dbType, id: number, quantity: number) => {
+  const currentTransaction = await db.transactions.findFirst({
+    where: { id: id },
+  });
+
+  // not possible but make typescript happy
+  if (!currentTransaction) {
+    return null;
+  }
+
+  const currentAsset = quantity * Number(currentTransaction.cost);
+  let newTotalQuantity;
+  let newTotalAsset;
+
+  if (currentTransaction.previousId) {
+    // transaction with previous
+    const prevTransaction = await db.transactions.findFirst({
+      where: { id: currentTransaction.previousId },
+    });
+
+    // not possible but make typescript happy
+    if (!prevTransaction) {
+      return null;
+    }
+
+    newTotalQuantity = prevTransaction.totalQuantity + quantity;
+    newTotalAsset = Number(prevTransaction.totalAsset) + currentAsset;
+  } else {
+    // first transaction
+    newTotalQuantity = quantity;
+    newTotalAsset = currentAsset;
+  }
+
+  return await db.transactions.update({
+    where: { id: id },
+    data: {
+      quantity: quantity,
+      totalQuantity: newTotalQuantity,
+      totalAsset: newTotalAsset,
+      costPerUnit: newTotalAsset / newTotalQuantity,
+    },
+  });
+};
 
 export const transactionRouter = createTRPCRouter({
   createPurchase: publicProcedure
@@ -126,53 +171,46 @@ export const transactionRouter = createTRPCRouter({
   updatePurchase: publicProcedure
     .input(z.object({ id: z.number(), quantity: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const currentTransaction = await ctx.db.transactions.findFirst({
-        where: { id: input.id },
-      });
+      let id: number | null = input.id;
+      let quantity = input.quantity;
 
-      // not possible but make typescript happy
-      if (!currentTransaction) {
-        return;
-      }
+      let cur = null;
 
-      // transaction with previous
-      if (currentTransaction.previousId) {
-        const prevTransaction = await ctx.db.transactions.findFirst({
-          where: { id: currentTransaction.previousId },
-        });
+      while (id) {
+        await updatePurchase(ctx.db, id, quantity);
 
-        // not possible but make typescript happy
-        if (!prevTransaction) {
+        // start check if has next
+        cur = await ctx.db.transactions.findFirst({ where: { id } });
+        if (!cur) {
           return;
         }
 
-        const newTotalQuantity = prevTransaction.totalQuantity + input.quantity;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const nextId: number | null = cur.nextId;
 
-        const currentAsset = input.quantity * Number(currentTransaction.cost);
-        const newTotalAsset = Number(prevTransaction.totalAsset) + currentAsset;
+        if (!nextId) {
+          return;
+        }
+        // end check if has next
 
-        await ctx.db.transactions.update({
-          where: { id: input.id },
-          data: {
-            quantity: input.quantity,
-            totalQuantity: newTotalQuantity,
-            totalAsset: newTotalAsset,
-            costPerUnit: newTotalAsset / newTotalQuantity,
-          },
+        // start get next quantity
+        const next = await ctx.db.transactions.findFirst({
+          where: { id: nextId },
         });
-      } else {
-        const newTotalQuantity = input.quantity;
-        const newTotalAsset = input.quantity * Number(currentTransaction.cost);
 
-        await ctx.db.transactions.update({
-          where: { id: input.id },
-          data: {
-            quantity: input.quantity,
-            totalQuantity: newTotalQuantity,
-            totalAsset: newTotalAsset,
-            costPerUnit: newTotalAsset / newTotalQuantity,
-          },
-        });
+        if (!next) {
+          return;
+        }
+
+        if (!next.quantity) {
+          return;
+        }
+        // end get next quantity
+
+        id = nextId;
+        quantity = next.quantity;
       }
+
+      return;
     }),
 });
