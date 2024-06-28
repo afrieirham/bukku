@@ -95,6 +95,118 @@ const updateSale = async (db: dbType, id: number, quantity: number) => {
   });
 };
 
+const updatePointersForDelete = async (db: dbType, id: number) => {
+  const current = await db.transactions.findFirst({
+    where: { id: id },
+  });
+
+  if (!current) {
+    return;
+  }
+
+  const previousId = current.previousId;
+  const nextId = current.nextId;
+
+  let next;
+
+  // delete myself
+  await db.transactions.delete({ where: { id: id } });
+
+  // update previous's next
+  if (previousId) {
+    const previous = await db.transactions.findFirst({
+      where: { id: previousId },
+    });
+    if (!previous) {
+      return;
+    }
+
+    await db.transactions.update({
+      where: { id: previous.id },
+      data: {
+        nextId: nextId,
+      },
+    });
+  }
+
+  // update next's previous
+  if (nextId) {
+    next = await db.transactions.findFirst({
+      where: { id: nextId },
+    });
+    if (!next) {
+      return;
+    }
+
+    await db.transactions.update({
+      where: { id: next.id },
+      data: {
+        previousId: previousId,
+      },
+    });
+  }
+
+  return next;
+};
+
+const updateTransaction = async (
+  db: dbType,
+  initialId: number,
+  initialQuantity: number,
+  initialCost: number,
+  initialType: string,
+) => {
+  let id: number | null = initialId;
+  let quantity = initialQuantity;
+  let cost = initialCost;
+  let type: string | null = initialType;
+
+  let cur = null;
+
+  while (id) {
+    if (type === "purchase") {
+      await updatePurchase(db, id, quantity, cost);
+    } else {
+      await updateSale(db, id, quantity);
+    }
+
+    cur = await db.transactions.findFirst({ where: { id } });
+    if (!cur) {
+      return;
+    }
+
+    // start check if has next
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const nextId: number | null = cur.nextId;
+
+    if (!nextId) {
+      return;
+    }
+    // end check if has next
+
+    // start get next quantity
+    const next = await db.transactions.findFirst({
+      where: { id: nextId },
+    });
+
+    if (!next) {
+      return;
+    }
+
+    if (!next.quantity) {
+      return;
+    }
+    // end get next quantity
+
+    id = nextId;
+    quantity = next.quantity;
+    cost = Number(next.cost);
+    type = next.type;
+  }
+
+  return;
+};
+
 export const transactionRouter = createTRPCRouter({
   createPurchase: publicProcedure
     .input(z.object({ cost: z.number(), quantity: z.number() }))
@@ -226,54 +338,30 @@ export const transactionRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      let id: number | null = input.id;
-      let quantity = input.quantity;
-      let cost = input.cost;
-      let type: string | null = input.type;
+      return updateTransaction(
+        ctx.db,
+        input.id,
+        input.quantity,
+        input.cost,
+        input.type,
+      );
+    }),
 
-      let cur = null;
+  deletePurchase: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const next = await updatePointersForDelete(ctx.db, input.id);
 
-      while (id) {
-        if (type === "purchase") {
-          await updatePurchase(ctx.db, id, quantity, cost);
-        } else {
-          await updateSale(ctx.db, id, quantity);
-        }
-
-        cur = await ctx.db.transactions.findFirst({ where: { id } });
-        if (!cur) {
-          return;
-        }
-
-        // start check if has next
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const nextId: number | null = cur.nextId;
-
-        if (!nextId) {
-          return;
-        }
-        // end check if has next
-
-        // start get next quantity
-        const next = await ctx.db.transactions.findFirst({
-          where: { id: nextId },
-        });
-
-        if (!next) {
-          return;
-        }
-
-        if (!next.quantity) {
-          return;
-        }
-        // end get next quantity
-
-        id = nextId;
-        quantity = next.quantity;
-        cost = Number(next.cost);
-        type = next.type;
+      if (!next) {
+        return;
       }
 
-      return;
+      return await updateTransaction(
+        ctx.db,
+        next.id,
+        next.quantity,
+        Number(next.cost),
+        next.type,
+      );
     }),
 });

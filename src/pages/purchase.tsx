@@ -37,6 +37,11 @@ function Purchase() {
       void ctx.transaction.getAllPurchases.invalidate();
     },
   });
+  const del = api.transaction.deletePurchase.useMutation({
+    onSuccess: () => {
+      void ctx.transaction.getAllPurchases.invalidate();
+    },
+  });
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -115,6 +120,7 @@ function Purchase() {
               </TableCell>
               <TableCell>
                 <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => {
                     const quantity = Number(
@@ -130,6 +136,17 @@ function Purchase() {
                   }}
                 >
                   Update
+                </Button>
+              </TableCell>
+              <TableCell>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={() => {
+                    del.mutate({ id: item.id });
+                  }}
+                >
+                  Delete
                 </Button>
               </TableCell>
             </TableRow>
