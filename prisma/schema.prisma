@@ -23,10 +23,9 @@ model Transactions {
     totalAsset    Decimal
     costPerUnit   Decimal
 
-    // pointer to previous transaction
-    previousId Int?          @unique
-    previous   Transactions? @relation("BasedOn", fields: [previousId], references: [id])
-    next       Transactions? @relation("BasedOn")
+    // pointer to previous/next transaction
+    previousId Int? @unique
+    nextId     Int? @unique
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt

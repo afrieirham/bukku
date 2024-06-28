@@ -31,7 +31,8 @@ export const transactionRouter = createTRPCRouter({
       const totalQuantity = lastTrx.totalQuantity + input.quantity;
       const totalAsset = Number(lastTrx.totalAsset) + totalCost;
 
-      return await ctx.db.transactions.create({
+      // add new purchase
+      const newPurchase = await ctx.db.transactions.create({
         data: {
           type: "purchase",
           quantity: input.quantity,
@@ -44,6 +45,14 @@ export const transactionRouter = createTRPCRouter({
           previousId: lastTrx.id,
         },
       });
+
+      // update previous's next
+      await ctx.db.transactions.update({
+        where: { id: lastTrx.id },
+        data: { nextId: newPurchase.id },
+      });
+
+      return newPurchase;
     }),
 
   getAllPurchases: publicProcedure.query(async ({ ctx }) => {
@@ -71,7 +80,7 @@ export const transactionRouter = createTRPCRouter({
         const totalQuantity = lastTrx.totalQuantity - input.quantity;
         const totalAsset = Number(lastTrx.totalAsset) - totalCost;
 
-        return await ctx.db.transactions.create({
+        const newSale = await ctx.db.transactions.create({
           data: {
             type: "sale",
             quantity: input.quantity,
@@ -85,6 +94,14 @@ export const transactionRouter = createTRPCRouter({
             previousId: lastTrx.id,
           },
         });
+
+        // update previous's next
+        await ctx.db.transactions.update({
+          where: { id: lastTrx.id },
+          data: { nextId: newSale.id },
+        });
+
+        return newSale;
       }
     }),
 
