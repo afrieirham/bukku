@@ -3,96 +3,98 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { type dbType } from "~/server/db";
 
-const updatePurchase = async (
+const recalculateTransaction = async (db: dbType, id: number) => {
+  const current = await db.transactions.findFirst({ where: { id } });
+  if (!current) {
+    return;
+  }
+
+  // transaction with no previous
+  if (!current.previousId) {
+    const totalCost = Number(current.cost) * current.quantity;
+    const totalQuantity = current.quantity;
+    const totalAsset = totalCost;
+    const costPerUnit = totalAsset / totalQuantity;
+    return { totalCost, totalQuantity, totalAsset, costPerUnit };
+  }
+
+  // transaction with previous
+  const previous = await db.transactions.findFirst({
+    where: { id: current.previousId },
+  });
+  if (!previous) {
+    return;
+  }
+
+  const cost = current.type === "sale" ? previous.costPerUnit : current.cost;
+
+  const totalCost = Number(cost) * current.quantity;
+  const totalQuantity = previous.totalQuantity + current.quantity;
+  const totalAsset = Number(previous.totalAsset) + totalCost;
+  const costPerUnit = totalAsset / totalQuantity;
+  return { cost, totalCost, totalQuantity, totalAsset, costPerUnit };
+};
+
+const updatePurchaseWithNewValue = async (
   db: dbType,
   id: number,
   quantity: number,
   cost: number,
 ) => {
-  const currentTransaction = await db.transactions.findFirst({
+  const current = await db.transactions.findFirst({
     where: { id: id },
   });
 
   // not possible but make typescript happy
-  if (!currentTransaction) {
+  if (!current) {
     return null;
   }
 
-  const currentAsset = quantity * cost;
-  let newTotalQuantity;
-  let newTotalAsset;
+  // update transaction with new "input"
+  await db.transactions.update({ where: { id }, data: { quantity, cost } });
 
-  if (currentTransaction.previousId) {
-    // transaction with previous
-    const prevTransaction = await db.transactions.findFirst({
-      where: { id: currentTransaction.previousId },
-    });
-
-    // not possible but make typescript happy
-    if (!prevTransaction) {
-      return null;
-    }
-
-    newTotalQuantity = prevTransaction.totalQuantity + quantity;
-    newTotalAsset = Number(prevTransaction.totalAsset) + currentAsset;
-  } else {
-    // first transaction
-    newTotalQuantity = quantity;
-    newTotalAsset = currentAsset;
+  // recalculate and update
+  const newValue = await recalculateTransaction(db, id);
+  if (!newValue) {
+    return;
   }
-
-  return await db.transactions.update({
-    where: { id: id },
-    data: {
-      quantity: quantity,
-      cost: cost,
-      totalQuantity: newTotalQuantity,
-      totalAsset: newTotalAsset,
-      costPerUnit: newTotalAsset / newTotalQuantity,
-    },
-  });
+  return await db.transactions.update({ where: { id }, data: { ...newValue } });
 };
 
-const updateSale = async (db: dbType, id: number, quantity: number) => {
-  const currentTransaction = await db.transactions.findFirst({
+const updateSaleWithNewValue = async (
+  db: dbType,
+  id: number,
+  quantity: number,
+) => {
+  const current = await db.transactions.findFirst({
     where: { id: id },
   });
-
-  // not possible but make typescript happy
-  if (!currentTransaction) {
+  if (!current) {
+    return null;
+  }
+  if (!current.previousId) {
     return null;
   }
 
-  // not possible but make typescript happy
-  if (!currentTransaction.previousId) {
+  const previous = await db.transactions.findFirst({
+    where: { id: current.previousId },
+  });
+  if (!previous) {
     return null;
   }
 
-  const prevTransaction = await db.transactions.findFirst({
-    where: { id: currentTransaction.previousId },
+  // update transaction with new "input"
+  await db.transactions.update({
+    where: { id },
+    data: { quantity, cost: previous.costPerUnit },
   });
 
-  // not possible but make typescript happy
-  if (!prevTransaction) {
-    return null;
+  // recalculate and update
+  const newValue = await recalculateTransaction(db, id);
+  if (!newValue) {
+    return;
   }
-
-  const currentAsset = Number(currentTransaction.cost) * quantity;
-  const newTotalQuantity = prevTransaction.totalQuantity - quantity;
-  const newTotalAsset = Number(prevTransaction.totalAsset) - currentAsset;
-
-  return await db.transactions.update({
-    where: { id: id },
-    data: {
-      quantity: quantity,
-
-      cost: prevTransaction.costPerUnit,
-      totalQuantity: newTotalQuantity,
-      totalAsset: newTotalAsset,
-      costPerUnit:
-        newTotalQuantity === 0 ? 0 : newTotalAsset / newTotalQuantity,
-    },
-  });
+  return await db.transactions.update({ where: { id }, data: { ...newValue } });
 };
 
 const updatePointersForDelete = async (db: dbType, id: number) => {
@@ -149,26 +151,30 @@ const updatePointersForDelete = async (db: dbType, id: number) => {
   return next;
 };
 
-const updateTransaction = async (
+const updatePurchaseOrSale = async (
   db: dbType,
-  initialId: number,
-  initialQuantity: number,
-  initialCost: number,
-  initialType: string,
+  id: number,
+  quantity: number,
+  cost: number,
+  type: string,
 ) => {
-  let id: number | null = initialId;
-  let quantity = initialQuantity;
-  let cost = initialCost;
-  let type: string | null = initialType;
+  if (type === "purchase") {
+    await updatePurchaseWithNewValue(db, id, quantity, cost);
+  } else {
+    await updateSaleWithNewValue(db, id, quantity);
+  }
+};
 
+const recalculateTransactionFrom = async (db: dbType, initialId: number) => {
+  let id = initialId;
   let cur = null;
 
   while (id) {
-    if (type === "purchase") {
-      await updatePurchase(db, id, quantity, cost);
-    } else {
-      await updateSale(db, id, quantity);
+    const newValue = await recalculateTransaction(db, id);
+    if (!newValue) {
+      return;
     }
+    await db.transactions.update({ where: { id }, data: newValue });
 
     cur = await db.transactions.findFirst({ where: { id } });
     if (!cur) {
@@ -176,7 +182,6 @@ const updateTransaction = async (
     }
 
     // start check if has next
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const nextId: number | null = cur.nextId;
 
     if (!nextId) {
@@ -184,24 +189,7 @@ const updateTransaction = async (
     }
     // end check if has next
 
-    // start get next quantity
-    const next = await db.transactions.findFirst({
-      where: { id: nextId },
-    });
-
-    if (!next) {
-      return;
-    }
-
-    if (!next.quantity) {
-      return;
-    }
-    // end get next quantity
-
     id = nextId;
-    quantity = next.quantity;
-    cost = Number(next.cost);
-    type = next.type;
   }
 
   return;
@@ -220,10 +208,11 @@ const defaultInsert = async (db: dbType, cost: number, quantity: number) => {
         type: "purchase",
         quantity: quantity,
         cost: cost,
+        totalCost: totalCost,
 
         totalQuantity: quantity,
-        totalAsset: totalCost.toFixed(2),
-        costPerUnit: (totalCost / quantity).toFixed(2),
+        totalAsset: totalCost,
+        costPerUnit: totalCost / quantity,
 
         previousId: null,
       },
@@ -239,10 +228,11 @@ const defaultInsert = async (db: dbType, cost: number, quantity: number) => {
       type: "purchase",
       quantity: quantity,
       cost: cost,
+      totalCost: totalCost,
 
       totalQuantity,
-      totalAsset: totalAsset.toFixed(2),
-      costPerUnit: (totalAsset / totalQuantity).toFixed(2),
+      totalAsset: totalAsset,
+      costPerUnit: totalAsset / totalQuantity,
 
       previousId: lastTrx.id,
     },
@@ -288,10 +278,11 @@ export const transactionRouter = createTRPCRouter({
             type: "purchase",
             quantity: input.quantity,
             cost: input.cost,
+            totalCost: totalCost,
 
             totalQuantity: input.quantity,
-            totalAsset: totalCost.toFixed(2),
-            costPerUnit: (totalCost / input.quantity).toFixed(2),
+            totalAsset: totalCost,
+            costPerUnit: totalCost / input.quantity,
 
             nextId: head.id,
           },
@@ -302,13 +293,7 @@ export const transactionRouter = createTRPCRouter({
           data: { previousId: newPurchase.id },
         });
 
-        return updateTransaction(
-          ctx.db,
-          head.id,
-          head.quantity,
-          Number(head.cost),
-          head.type,
-        );
+        return recalculateTransactionFrom(ctx.db, head.id);
       }
 
       if (input.position > 0) {
@@ -355,9 +340,10 @@ export const transactionRouter = createTRPCRouter({
             type: "purchase",
             quantity: input.quantity,
             cost: input.cost,
+            totalCost: totalCost,
 
-            totalQuantity,
-            totalAsset,
+            totalQuantity: totalQuantity,
+            totalAsset: totalAsset,
             costPerUnit: totalAsset / totalQuantity,
 
             previousId: newPurchasePrevious,
@@ -382,13 +368,7 @@ export const transactionRouter = createTRPCRouter({
           },
         });
 
-        await updateTransaction(
-          ctx.db,
-          newPurchase.id,
-          newPurchase.quantity,
-          Number(newPurchase.cost),
-          newPurchase.type,
-        );
+        await recalculateTransactionFrom(ctx.db, newPurchase.id);
         return;
       }
 
@@ -407,42 +387,41 @@ export const transactionRouter = createTRPCRouter({
   }),
 
   createSale: publicProcedure
-    .input(z.object({ cost: z.number(), quantity: z.number() }))
+    .input(z.object({ quantity: z.number() }))
     .mutation(async ({ ctx, input }) => {
       // get latest transaction record
-      const lastTrx = await getLastTransaction(ctx.db);
-
-      if (!lastTrx) {
-        // not possible
-      } else {
-        const totalCost = input.cost * input.quantity;
-
-        const totalQuantity = lastTrx.totalQuantity - input.quantity;
-        const totalAsset = Number(lastTrx.totalAsset) - totalCost;
-
-        const newSale = await ctx.db.transactions.create({
-          data: {
-            type: "sale",
-            quantity: input.quantity,
-            cost: input.cost,
-
-            totalQuantity,
-            totalAsset: totalAsset.toFixed(2),
-            costPerUnit:
-              totalQuantity === 0 ? 0 : (totalAsset / totalQuantity).toFixed(2),
-
-            previousId: lastTrx.id,
-          },
-        });
-
-        // update previous's next
-        await ctx.db.transactions.update({
-          where: { id: lastTrx.id },
-          data: { nextId: newSale.id },
-        });
-
-        return newSale;
+      const previous = await getLastTransaction(ctx.db);
+      if (!previous) {
+        return;
       }
+
+      const totalCost = Number(previous.costPerUnit) * input.quantity;
+      const totalQuantity = previous.totalQuantity + input.quantity;
+      const totalAsset = Number(previous.totalAsset) + totalCost;
+      const costPerUnit = totalQuantity === 0 ? 0 : totalAsset / totalQuantity;
+
+      const newSale = await ctx.db.transactions.create({
+        data: {
+          type: "sale",
+          quantity: input.quantity,
+          cost: previous.costPerUnit,
+          totalCost: totalCost,
+
+          totalQuantity: totalQuantity,
+          totalAsset: totalAsset,
+          costPerUnit: costPerUnit,
+
+          previousId: previous.id,
+        },
+      });
+
+      // update previous's next
+      await ctx.db.transactions.update({
+        where: { id: previous.id },
+        data: { nextId: newSale.id },
+      });
+
+      return newSale;
     }),
 
   getLatestUnitCost: publicProcedure.query(async ({ ctx }) => {
@@ -470,13 +449,14 @@ export const transactionRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return updateTransaction(
+      await updatePurchaseOrSale(
         ctx.db,
         input.id,
         input.quantity,
         input.cost,
         input.type,
       );
+      return recalculateTransactionFrom(ctx.db, input.id);
     }),
 
   deletePurchase: publicProcedure
@@ -488,12 +468,6 @@ export const transactionRouter = createTRPCRouter({
         return;
       }
 
-      return await updateTransaction(
-        ctx.db,
-        next.id,
-        next.quantity,
-        Number(next.cost),
-        next.type,
-      );
+      return await recalculateTransactionFrom(ctx.db, next.id);
     }),
 });

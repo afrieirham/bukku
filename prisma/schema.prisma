@@ -14,9 +14,10 @@ model Transactions {
     id Int @id @default(autoincrement())
 
     // transaction property
-    type     String
-    quantity Int
-    cost     Decimal
+    type      String
+    quantity  Int
+    cost      Decimal
+    totalCost Decimal
 
     // inventory (calculated property)
     totalQuantity Int

@@ -19,16 +19,17 @@ function Sale() {
 
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState("");
-  // const [price, setPrice] = useState("");
 
   const update = api.transaction.updateTransaction.useMutation({
     onSuccess: () => {
       void ctx.transaction.getAllSales.invalidate();
+      void ctx.transaction.getLatestUnitCost.invalidate();
     },
   });
   const del = api.transaction.deletePurchase.useMutation({
     onSuccess: () => {
       void ctx.transaction.getAllSales.invalidate();
+      void ctx.transaction.getLatestUnitCost.invalidate();
     },
   });
   const sales = api.transaction.getAllSales.useQuery();
@@ -37,14 +38,14 @@ function Sale() {
     onSuccess: () => {
       alert("Sale added!");
       setQuantity("");
-      // setPrice("");
       setLoading(false);
       void ctx.transaction.getLatestUnitCost.invalidate();
       void ctx.transaction.getAllSales.invalidate();
     },
   });
 
-  const costPerUnit = data?.costPerUnit;
+  const costPerUnit = Number(data?.costPerUnit);
+  const availableQuantity = Number(data?.totalQuantity);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -57,10 +58,7 @@ function Sale() {
       return;
     }
 
-    mutate({
-      cost: Number(costPerUnit),
-      quantity: Number(quantity),
-    });
+    mutate({ quantity: -Number(quantity) });
   };
 
   return (
@@ -76,11 +74,11 @@ function Sale() {
       <h1 className="font-bold underline">Sales</h1>
       <div>
         <p>Cost Per Unit</p>
-        <p>RM{Number(costPerUnit)}</p>
+        <p>RM{costPerUnit}</p>
       </div>
       <div>
         <p>Available Quantity</p>
-        <p>{Number(data?.totalQuantity)}</p>
+        <p>{availableQuantity}</p>
       </div>
       <div>
         <p>Quantity</p>
@@ -136,7 +134,9 @@ function Sale() {
                   variant="ghost"
                   type="button"
                   onClick={() => {
-                    const quantity = Number(prompt("qty"));
+                    const quantity = -Number(
+                      prompt("Quantity?", String(-item.quantity)),
+                    );
                     update.mutate({
                       id: item.id,
                       quantity,
