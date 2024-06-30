@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "@jest/globals";
+import { describe, expect, test, beforeEach, afterEach } from "vitest";
 
 import { TransactionType } from "~/constant";
 import { appRouter } from "~/server/api/root";
