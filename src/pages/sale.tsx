@@ -1,17 +1,8 @@
 import Link from "next/link";
 import React, { useState } from "react";
-import { format } from "date-fns";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
 import { api } from "~/utils/api";
 
 function Sale() {
@@ -21,19 +12,6 @@ function Sale() {
   const [quantity, setQuantity] = useState("");
   const [position, setPosition] = useState("");
 
-  const update = api.transaction.updateTransaction.useMutation({
-    onSuccess: () => {
-      void ctx.transaction.getAllSales.invalidate();
-      void ctx.transaction.getLatestUnitCost.invalidate();
-    },
-  });
-  const del = api.transaction.deleteTransaction.useMutation({
-    onSuccess: () => {
-      void ctx.transaction.getAllSales.invalidate();
-      void ctx.transaction.getLatestUnitCost.invalidate();
-    },
-  });
-  const sales = api.transaction.getAllSales.useQuery();
   const { data } = api.transaction.getLatestUnitCost.useQuery();
   const { mutate } = api.transaction.createSale.useMutation({
     onSuccess: () => {
@@ -110,60 +88,6 @@ function Sale() {
           {loading ? "Loading..." : "Submit"}
         </Button>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead className="text-right">Quantity</TableHead>
-            <TableHead className="text-right">Cost Per Unit (RM)</TableHead>
-            <TableHead className="text-right">Total Cost (RM)</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sales.data?.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>{item.id}</TableCell>
-              <TableCell>
-                {format(new Date(item.createdAt), "dd/MM/yyyy")}
-              </TableCell>
-              <TableCell align="right">{item.quantity}</TableCell>
-              <TableCell align="right">{item.cost}</TableCell>
-              <TableCell align="right">{item.quantity * item.cost}</TableCell>
-              <TableCell>
-                <Button
-                  variant="ghost"
-                  type="button"
-                  onClick={() => {
-                    const quantity = -Number(
-                      prompt("Quantity?", String(-item.quantity)),
-                    );
-                    update.mutate({
-                      id: item.id,
-                      quantity,
-                      cost: 0,
-                      type: "sale",
-                    });
-                  }}
-                >
-                  Update
-                </Button>
-              </TableCell>
-              <TableCell>
-                <Button
-                  variant="ghost"
-                  type="button"
-                  onClick={() => {
-                    del.mutate({ id: item.id });
-                  }}
-                >
-                  Delete
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
     </form>
   );
 }

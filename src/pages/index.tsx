@@ -1,11 +1,33 @@
+import { format } from "date-fns";
 import Head from "next/head";
 import Link from "next/link";
 
 import { Button } from "~/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
 import { api } from "~/utils/api";
 
 export default function Home() {
+  const ctx = api.useContext();
+
   const { data } = api.transaction.getAllTransactions.useQuery();
+  const update = api.transaction.updateTransaction.useMutation({
+    onSuccess: () => {
+      void ctx.transaction.getAllTransactions.invalidate();
+    },
+  });
+  const del = api.transaction.deleteTransaction.useMutation({
+    onSuccess: () => {
+      void ctx.transaction.getAllTransactions.invalidate();
+    },
+  });
+
   if (!data) {
     return;
   }
@@ -31,6 +53,65 @@ export default function Home() {
             </Button>
           </li>
         </ul>
+        <Table className="mt-8">
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead className="text-right">Price (RM)</TableHead>
+              <TableHead className="text-right">Quantity</TableHead>
+              <TableHead className="text-right">Total Amount (RM)</TableHead>
+              <TableHead>Update</TableHead>
+              <TableHead>Delete</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data?.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>{item.id}</TableCell>{" "}
+                <TableCell>
+                  {format(new Date(item.createdAt), "dd/MM/yyyy")}
+                </TableCell>
+                <TableCell align="right">{Number(item.cost)}</TableCell>
+                <TableCell align="right">{item.quantity}</TableCell>
+                <TableCell align="right">
+                  {item.quantity * Number(item.cost)}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="link"
+                    type="button"
+                    onClick={() => {
+                      const quantity = Number(
+                        prompt("Quantity?", String(item.quantity)),
+                      );
+                      const cost = Number(prompt("Cost?", String(item.cost)));
+                      update.mutate({
+                        id: item.id,
+                        quantity,
+                        cost,
+                        type: item.type,
+                      });
+                    }}
+                  >
+                    Update
+                  </Button>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="link"
+                    type="button"
+                    onClick={() => {
+                      del.mutate({ id: item.id });
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </main>
     </>
   );
