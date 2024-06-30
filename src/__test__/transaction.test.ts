@@ -19,7 +19,7 @@ beforeEach(reset);
 afterEach(reset);
 
 describe("transactions", () => {
-  test("add new purchase", async () => {
+  test("add default new purchase", async () => {
     const first = await caller.transaction.createPurchase({
       cost: 2,
       quantity: 150,
@@ -41,7 +41,7 @@ describe("transactions", () => {
   });
 });
 
-test("add new sale", async () => {
+test("add default new sale", async () => {
   await caller.transaction.createPurchase({
     cost: 2,
     quantity: 150,
