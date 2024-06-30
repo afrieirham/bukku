@@ -36,8 +36,16 @@ import {
 } from "~/components/ui/table";
 import { api, type RouterOutputs } from "~/utils/api";
 
+const formatter = (num: number | string | Prisma.Decimal, decimal: number) =>
+  Number(num) < 0
+    ? String(Number(-num).toFixed(decimal))
+    : String(Number(num).toFixed(decimal));
+
 export default function Home() {
   const { data } = api.transaction.getAllTransactions.useQuery();
+  const current = api.transaction.getLatestUnitCost.useQuery();
+
+  if (!current.data) return;
 
   return (
     <>
@@ -60,6 +68,30 @@ export default function Home() {
             </Button>
           </li>
         </ul>
+        <div className="flex w-full space-x-2">
+          <div className="bg-card text-card-foreground w-full rounded-xl border shadow">
+            <div className="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
+              <h3 className="text-sm font-medium tracking-tight">
+                Cost Per Unit
+              </h3>
+            </div>
+            <div className="p-6 pt-0">
+              <div className="text-2xl font-bold">
+                RM{formatter(current.data.costPerUnit, 2)}
+              </div>
+            </div>
+          </div>
+          <div className="bg-card text-card-foreground w-full rounded-xl border shadow">
+            <div className="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
+              <h3 className="text-sm font-medium tracking-tight">Inventory</h3>
+            </div>
+            <div className="p-6 pt-0">
+              <div className="text-2xl font-bold">
+                {formatter(current.data.totalQuantity, 0)}
+              </div>
+            </div>
+          </div>
+        </div>
         <Table className="mt-8">
           <TableHeader>
             <TableRow>
@@ -92,18 +124,15 @@ function TransactionRow({ item }: { item: TransactionItem }) {
   const update = api.transaction.updateTransaction.useMutation({
     onSuccess: () => {
       void ctx.transaction.getAllTransactions.invalidate();
+      void ctx.transaction.getLatestUnitCost.invalidate();
     },
   });
   const remove = api.transaction.deleteTransaction.useMutation({
     onSuccess: () => {
       void ctx.transaction.getAllTransactions.invalidate();
+      void ctx.transaction.getLatestUnitCost.invalidate();
     },
   });
-
-  const formatter = (num: number | string | Prisma.Decimal, decimal: number) =>
-    Number(num) < 0
-      ? String(Number(-num).toFixed(decimal))
-      : String(Number(num).toFixed(decimal));
 
   return (
     <TableRow key={item.id}>
