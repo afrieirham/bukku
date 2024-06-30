@@ -2,9 +2,9 @@ import { z } from "zod";
 import { TransactionType } from "~/constant";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { type dbType } from "~/server/db";
+import { db } from "~/server/db";
 
-const recalculateTransaction = async (db: dbType, id: number) => {
+const recalculateTransaction = async (id: number) => {
   const current = await db.transactions.findFirst({ where: { id } });
   if (!current) {
     return;
@@ -38,7 +38,6 @@ const recalculateTransaction = async (db: dbType, id: number) => {
 };
 
 const updatePurchaseWithNewValue = async (
-  db: dbType,
   id: number,
   quantity: number,
   cost: number,
@@ -56,18 +55,14 @@ const updatePurchaseWithNewValue = async (
   await db.transactions.update({ where: { id }, data: { quantity, cost } });
 
   // recalculate and update
-  const newValue = await recalculateTransaction(db, id);
+  const newValue = await recalculateTransaction(id);
   if (!newValue) {
     return;
   }
   return await db.transactions.update({ where: { id }, data: { ...newValue } });
 };
 
-const updateSaleWithNewValue = async (
-  db: dbType,
-  id: number,
-  quantity: number,
-) => {
+const updateSaleWithNewValue = async (id: number, quantity: number) => {
   const current = await db.transactions.findFirst({
     where: { id: id },
   });
@@ -92,14 +87,14 @@ const updateSaleWithNewValue = async (
   });
 
   // recalculate and update
-  const newValue = await recalculateTransaction(db, id);
+  const newValue = await recalculateTransaction(id);
   if (!newValue) {
     return;
   }
   return await db.transactions.update({ where: { id }, data: { ...newValue } });
 };
 
-const updatePointersForDelete = async (db: dbType, id: number) => {
+const updatePointersForDelete = async (id: number) => {
   const current = await db.transactions.findFirst({
     where: { id: id },
   });
@@ -154,25 +149,24 @@ const updatePointersForDelete = async (db: dbType, id: number) => {
 };
 
 const updatePurchaseOrSale = async (
-  db: dbType,
   id: number,
   quantity: number,
   cost: number,
   type: string,
 ) => {
   if (type === TransactionType.Purchase) {
-    await updatePurchaseWithNewValue(db, id, quantity, cost);
+    await updatePurchaseWithNewValue(id, quantity, cost);
   } else {
-    await updateSaleWithNewValue(db, id, quantity);
+    await updateSaleWithNewValue(id, quantity);
   }
 };
 
-const recalculateTransactionFrom = async (db: dbType, initialId: number) => {
+const recalculateTransactionFrom = async (initialId: number) => {
   let id = initialId;
   let cur = null;
 
   while (id) {
-    const newValue = await recalculateTransaction(db, id);
+    const newValue = await recalculateTransaction(id);
     if (!newValue) {
       return;
     }
@@ -197,15 +191,11 @@ const recalculateTransactionFrom = async (db: dbType, initialId: number) => {
   return;
 };
 
-const defaultCreatePurchase = async (
-  db: dbType,
-  cost: number,
-  quantity: number,
-) => {
+const defaultCreatePurchase = async (cost: number, quantity: number) => {
   const totalCost = cost * quantity;
 
   // get latest transaction record
-  const previous = await getLastTransaction(db);
+  const previous = await getLastTransaction();
 
   // first transaction
   if (!previous) {
@@ -253,13 +243,13 @@ const defaultCreatePurchase = async (
   return newPurchase;
 };
 
-const getLastTransaction = async (db: dbType) => {
+const getLastTransaction = async () => {
   return await db.transactions.findFirst({ where: { nextId: null } });
 };
 
-const defaultCreateSale = async (db: dbType, quantity: number) => {
+const defaultCreateSale = async (quantity: number) => {
   // get latest transaction record
-  const previous = await getLastTransaction(db);
+  const previous = await getLastTransaction();
   if (!previous) {
     return;
   }
@@ -302,25 +292,21 @@ export const transactionRouter = createTRPCRouter({
         position: z.number(),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ input }) => {
       const totalCost = input.cost * input.quantity;
 
       // insert to top
       if (input.position === -1) {
-        const head = await ctx.db.transactions.findFirst({
+        const head = await db.transactions.findFirst({
           where: { previousId: null },
         });
 
         if (!head) {
-          return await defaultCreatePurchase(
-            ctx.db,
-            input.cost,
-            input.quantity,
-          );
+          return await defaultCreatePurchase(input.cost, input.quantity);
         }
 
         // create and update my next to head id
-        const newPurchase = await ctx.db.transactions.create({
+        const newPurchase = await db.transactions.create({
           data: {
             type: TransactionType.Purchase,
             quantity: input.quantity,
@@ -335,17 +321,17 @@ export const transactionRouter = createTRPCRouter({
           },
         });
         // update top prev to my id
-        await ctx.db.transactions.update({
+        await db.transactions.update({
           where: { id: head.id },
           data: { previousId: newPurchase.id },
         });
 
-        return recalculateTransactionFrom(ctx.db, head.id);
+        return recalculateTransactionFrom(head.id);
       }
 
       if (input.position > 0) {
         // check if position is tail
-        const newPrevious = await ctx.db.transactions.findFirst({
+        const newPrevious = await db.transactions.findFirst({
           where: { id: input.position },
         });
 
@@ -354,11 +340,7 @@ export const transactionRouter = createTRPCRouter({
         }
 
         if (!newPrevious.nextId) {
-          return await defaultCreatePurchase(
-            ctx.db,
-            input.cost,
-            input.quantity,
-          );
+          return await defaultCreatePurchase(input.cost, input.quantity);
         }
 
         // connect to list
@@ -369,14 +351,14 @@ export const transactionRouter = createTRPCRouter({
 
         // clear pointers
         // 1. clear previous's next pointer
-        await ctx.db.transactions.update({
+        await db.transactions.update({
           where: { id: newPrevious.id },
           data: {
             nextId: null,
           },
         });
         // 2. clear next's previous pointer
-        await ctx.db.transactions.update({
+        await db.transactions.update({
           where: { id: newPrevious.nextId },
           data: {
             previousId: null,
@@ -386,7 +368,7 @@ export const transactionRouter = createTRPCRouter({
         const totalQuantity = newPrevious.totalQuantity + input.quantity;
         const totalAsset = Number(newPrevious.totalAsset) + totalCost;
 
-        const newPurchase = await ctx.db.transactions.create({
+        const newPurchase = await db.transactions.create({
           data: {
             type: TransactionType.Purchase,
             quantity: input.quantity,
@@ -404,7 +386,7 @@ export const transactionRouter = createTRPCRouter({
 
         // update previous and next pointer
         // 1. previous's next = my id
-        await ctx.db.transactions.update({
+        await db.transactions.update({
           where: { id: newPrevious.id },
           data: {
             nextId: newPurchase.id,
@@ -412,26 +394,26 @@ export const transactionRouter = createTRPCRouter({
         });
 
         // 2. next's previous = my id
-        await ctx.db.transactions.update({
+        await db.transactions.update({
           where: { id: newPrevious.nextId },
           data: {
             previousId: newPurchase.id,
           },
         });
 
-        await recalculateTransactionFrom(ctx.db, newPurchase.id);
+        await recalculateTransactionFrom(newPurchase.id);
         return;
       }
 
-      return await defaultCreatePurchase(ctx.db, input.cost, input.quantity);
+      return await defaultCreatePurchase(input.cost, input.quantity);
     }),
 
   createSale: publicProcedure
     .input(z.object({ quantity: z.number(), position: z.number() }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ input }) => {
       if (input.position > 0) {
         // check if position is tail
-        const newPrevious = await ctx.db.transactions.findFirst({
+        const newPrevious = await db.transactions.findFirst({
           where: { id: input.position },
         });
         if (!newPrevious) {
@@ -439,7 +421,7 @@ export const transactionRouter = createTRPCRouter({
         }
 
         if (!newPrevious.nextId) {
-          return await defaultCreateSale(ctx.db, input.quantity);
+          return await defaultCreateSale(input.quantity);
         }
 
         // connect to list
@@ -450,14 +432,14 @@ export const transactionRouter = createTRPCRouter({
 
         // clear pointers
         // 1. clear previous's next pointer
-        await ctx.db.transactions.update({
+        await db.transactions.update({
           where: { id: newPrevious.id },
           data: {
             nextId: null,
           },
         });
         // 2. clear next's previous pointer
-        await ctx.db.transactions.update({
+        await db.transactions.update({
           where: { id: newPrevious.nextId },
           data: {
             previousId: null,
@@ -469,7 +451,7 @@ export const transactionRouter = createTRPCRouter({
         const totalQuantity = newPrevious.totalQuantity + input.quantity;
         const totalAsset = Number(newPrevious.totalAsset) + totalCost;
 
-        const newSale = await ctx.db.transactions.create({
+        const newSale = await db.transactions.create({
           data: {
             type: TransactionType.Sale,
             quantity: input.quantity,
@@ -487,7 +469,7 @@ export const transactionRouter = createTRPCRouter({
 
         // update previous and next pointer
         // 1. previous's next = my id
-        await ctx.db.transactions.update({
+        await db.transactions.update({
           where: { id: newPrevious.id },
           data: {
             nextId: newSale.id,
@@ -495,17 +477,17 @@ export const transactionRouter = createTRPCRouter({
         });
 
         // 2. next's previous = my id
-        await ctx.db.transactions.update({
+        await db.transactions.update({
           where: { id: newPrevious.nextId },
           data: {
             previousId: newSale.id,
           },
         });
 
-        return await recalculateTransactionFrom(ctx.db, newSale.id);
+        return await recalculateTransactionFrom(newSale.id);
       }
 
-      return await defaultCreateSale(ctx.db, input.quantity);
+      return await defaultCreateSale(input.quantity);
     }),
 
   updateTransaction: publicProcedure
@@ -517,35 +499,34 @@ export const transactionRouter = createTRPCRouter({
         type: z.string(),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ input }) => {
       await updatePurchaseOrSale(
-        ctx.db,
         input.id,
         input.quantity,
         input.cost,
         input.type,
       );
-      return recalculateTransactionFrom(ctx.db, input.id);
+      return recalculateTransactionFrom(input.id);
     }),
 
   deleteTransaction: publicProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      const next = await updatePointersForDelete(ctx.db, input.id);
+    .mutation(async ({ input }) => {
+      const next = await updatePointersForDelete(input.id);
 
       if (!next) {
         return;
       }
 
-      return await recalculateTransactionFrom(ctx.db, next.id);
+      return await recalculateTransactionFrom(next.id);
     }),
 
-  getLatestUnitCost: publicProcedure.query(async ({ ctx }) => {
-    return getLastTransaction(ctx.db);
+  getLatestUnitCost: publicProcedure.query(async ({}) => {
+    return getLastTransaction();
   }),
 
-  getAllTransactions: publicProcedure.query(async ({ ctx }) => {
-    const transactions = await ctx.db.transactions.findMany({});
+  getAllTransactions: publicProcedure.query(async ({}) => {
+    const transactions = await db.transactions.findMany({});
 
     const sorted: typeof transactions = [];
 
