@@ -1,8 +1,15 @@
 import Head from "next/head";
 import Link from "next/link";
+
 import { Button } from "~/components/ui/button";
+import { api } from "~/utils/api";
 
 export default function Home() {
+  const { data } = api.transaction.getAllTransactions.useQuery();
+  if (!data) {
+    return;
+  }
+  console.log("data", data);
   return (
     <>
       <Head>

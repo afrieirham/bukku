@@ -563,4 +563,38 @@ export const transactionRouter = createTRPCRouter({
       costPerUnit: Number(item.costPerUnit),
     }));
   }),
+
+  getAllTransactions: publicProcedure.query(async ({ ctx }) => {
+    const transactions = await ctx.db.transactions.findMany({});
+
+    const sorted: typeof transactions = [];
+
+    const head = transactions.find((trx) => !trx.previousId);
+    if (!head) {
+      return sorted;
+    }
+    sorted.push(head);
+
+    if (!head.nextId) {
+      return sorted;
+    }
+
+    let nextId = head.nextId;
+    let next;
+
+    while (nextId) {
+      next = transactions.find((trx) => trx.id === nextId);
+      if (!next) {
+        return sorted;
+      }
+      sorted.push(next);
+
+      if (!next.nextId) {
+        return sorted;
+      }
+      nextId = next.nextId;
+    }
+
+    return sorted;
+  }),
 });
