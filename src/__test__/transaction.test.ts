@@ -52,7 +52,6 @@ test("add new sale", async () => {
     quantity: 10,
     position: 0,
   });
-  // if (!purchase) return expect(true).toBe(false);
 
   const sale = await caller.transaction.createSale({
     quantity: -5,
@@ -71,6 +70,40 @@ test("add new sale", async () => {
 
     totalTransaction: 3,
   });
+});
+
+test("delete a purchase", async () => {
+  const purchase = await caller.transaction.createPurchase({
+    cost: 2,
+    quantity: 150,
+    position: 0,
+  });
+  if (!purchase) return expect(true).toBe(false);
+
+  await caller.transaction.deleteTransaction({ id: purchase.id });
+
+  const transaction = await caller.transaction.getAllTransactions();
+  expect(transaction.length).toBe(0);
+});
+
+test("delete a sale", async () => {
+  const purchase = await caller.transaction.createPurchase({
+    cost: 2,
+    quantity: 150,
+    position: 0,
+  });
+  if (!purchase) return expect(true).toBe(false);
+
+  const sale = await caller.transaction.createSale({
+    quantity: -5,
+    position: 0,
+  });
+  if (!sale) return expect(true).toBe(false);
+
+  await caller.transaction.deleteTransaction({ id: sale.id });
+
+  const transaction = await caller.transaction.getAllTransactions();
+  expect(transaction.length).toBe(1);
 });
 
 const expectTransactionToBe = async ({
