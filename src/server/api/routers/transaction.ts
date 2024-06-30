@@ -388,17 +388,6 @@ export const transactionRouter = createTRPCRouter({
       return await defaultCreatePurchase(ctx.db, input.cost, input.quantity);
     }),
 
-  getAllPurchases: publicProcedure.query(async ({ ctx }) => {
-    return (
-      await ctx.db.transactions.findMany({ where: { type: "purchase" } })
-    ).map((item) => ({
-      ...item,
-      cost: Number(item.cost),
-      totalAsset: Number(item.totalAsset),
-      costPerUnit: Number(item.costPerUnit),
-    }));
-  }),
-
   createSale: publicProcedure
     .input(z.object({ quantity: z.number() }))
     .mutation(async ({ ctx, input }) => {
@@ -437,21 +426,6 @@ export const transactionRouter = createTRPCRouter({
       return newSale;
     }),
 
-  getLatestUnitCost: publicProcedure.query(async ({ ctx }) => {
-    return getLastTransaction(ctx.db);
-  }),
-
-  getAllSales: publicProcedure.query(async ({ ctx }) => {
-    return (
-      await ctx.db.transactions.findMany({ where: { type: "sale" } })
-    ).map((item) => ({
-      ...item,
-      cost: Number(item.cost),
-      totalAsset: Number(item.totalAsset),
-      costPerUnit: Number(item.costPerUnit),
-    }));
-  }),
-
   updateTransaction: publicProcedure
     .input(
       z.object({
@@ -483,4 +457,30 @@ export const transactionRouter = createTRPCRouter({
 
       return await recalculateTransactionFrom(ctx.db, next.id);
     }),
+
+  getLatestUnitCost: publicProcedure.query(async ({ ctx }) => {
+    return getLastTransaction(ctx.db);
+  }),
+
+  getAllPurchases: publicProcedure.query(async ({ ctx }) => {
+    return (
+      await ctx.db.transactions.findMany({ where: { type: "purchase" } })
+    ).map((item) => ({
+      ...item,
+      cost: Number(item.cost),
+      totalAsset: Number(item.totalAsset),
+      costPerUnit: Number(item.costPerUnit),
+    }));
+  }),
+
+  getAllSales: publicProcedure.query(async ({ ctx }) => {
+    return (
+      await ctx.db.transactions.findMany({ where: { type: "sale" } })
+    ).map((item) => ({
+      ...item,
+      cost: Number(item.cost),
+      totalAsset: Number(item.totalAsset),
+      costPerUnit: Number(item.costPerUnit),
+    }));
+  }),
 });
