@@ -44,6 +44,38 @@ describe("create transaction", () => {
     });
   });
 
+  test("purchase position in between 1st and 3rd", async () => {
+    const first = await caller.transaction.createPurchase({
+      cost: 2,
+      quantity: 150,
+      position: 0,
+    });
+    if (!first) return expect(true).toBe(false);
+
+    await caller.transaction.createSale({
+      quantity: -5,
+      position: 0,
+    });
+
+    await caller.transaction.createPurchase({
+      cost: 1.5,
+      quantity: 10,
+      position: first.id,
+    });
+
+    await expectTransactionToBe({
+      type: TransactionType.Sale,
+      quantity: -5,
+      cost: "1.97",
+
+      totalQuantity: 155,
+      totalAsset: "305.16",
+      totalCostPerUnit: "1.97",
+
+      totalTransaction: 3,
+    });
+  });
+
   test("purchase position null", async () => {
     const first = await caller.transaction.createPurchase({
       cost: 2,
