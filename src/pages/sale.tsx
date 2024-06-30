@@ -26,7 +26,7 @@ function Sale() {
       void ctx.transaction.getLatestUnitCost.invalidate();
     },
   });
-  const del = api.transaction.deletePurchase.useMutation({
+  const del = api.transaction.deleteTransaction.useMutation({
     onSuccess: () => {
       void ctx.transaction.getAllSales.invalidate();
       void ctx.transaction.getLatestUnitCost.invalidate();

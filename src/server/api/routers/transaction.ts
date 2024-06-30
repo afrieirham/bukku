@@ -472,7 +472,7 @@ export const transactionRouter = createTRPCRouter({
       return recalculateTransactionFrom(ctx.db, input.id);
     }),
 
-  deletePurchase: publicProcedure
+  deleteTransaction: publicProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const next = await updatePointersForDelete(ctx.db, input.id);

@@ -39,7 +39,7 @@ function Purchase() {
       void ctx.transaction.getAllPurchases.invalidate();
     },
   });
-  const del = api.transaction.deletePurchase.useMutation({
+  const del = api.transaction.deleteTransaction.useMutation({
     onSuccess: () => {
       void ctx.transaction.getAllPurchases.invalidate();
     },
