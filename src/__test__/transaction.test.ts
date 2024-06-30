@@ -18,8 +18,33 @@ const reset = async () => {
 beforeEach(reset);
 afterEach(reset);
 
-describe("transactions", () => {
-  test("add default new purchase", async () => {
+describe("create transaction", () => {
+  test("purchase position -1", async () => {
+    await caller.transaction.createPurchase({
+      cost: 1.5,
+      quantity: 10,
+      position: 0,
+    });
+    await caller.transaction.createPurchase({
+      cost: 2,
+      quantity: 150,
+      position: -1,
+    });
+
+    await expectTransactionToBe({
+      type: TransactionType.Purchase,
+      quantity: 10,
+      cost: "1.50",
+
+      totalQuantity: 160,
+      totalAsset: "315.00",
+      totalCostPerUnit: "1.97",
+
+      totalTransaction: 2,
+    });
+  });
+
+  test("purchase position null", async () => {
     const first = await caller.transaction.createPurchase({
       cost: 2,
       quantity: 150,
@@ -39,71 +64,73 @@ describe("transactions", () => {
       totalTransaction: 1,
     });
   });
+
+  test("sale position null", async () => {
+    await caller.transaction.createPurchase({
+      cost: 2,
+      quantity: 150,
+      position: 0,
+    });
+    await caller.transaction.createPurchase({
+      cost: 1.5,
+      quantity: 10,
+      position: 0,
+    });
+
+    const sale = await caller.transaction.createSale({
+      quantity: -5,
+      position: 0,
+    });
+    if (!sale) return expect(true).toBe(false);
+
+    await expectTransactionToBe({
+      type: TransactionType.Sale,
+      quantity: -5,
+      cost: "1.97",
+
+      totalQuantity: 155,
+      totalAsset: "305.16",
+      totalCostPerUnit: "1.97",
+
+      totalTransaction: 3,
+    });
+  });
 });
 
-test("add default new sale", async () => {
-  await caller.transaction.createPurchase({
-    cost: 2,
-    quantity: 150,
-    position: 0,
+describe("delete transaction", () => {
+  test("purchase", async () => {
+    const purchase = await caller.transaction.createPurchase({
+      cost: 2,
+      quantity: 150,
+      position: 0,
+    });
+    if (!purchase) return expect(true).toBe(false);
+
+    await caller.transaction.deleteTransaction({ id: purchase.id });
+
+    const transaction = await caller.transaction.getAllTransactions();
+    expect(transaction.length).toBe(0);
   });
-  await caller.transaction.createPurchase({
-    cost: 1.5,
-    quantity: 10,
-    position: 0,
+
+  test("sale", async () => {
+    const purchase = await caller.transaction.createPurchase({
+      cost: 2,
+      quantity: 150,
+      position: 0,
+    });
+    if (!purchase) return expect(true).toBe(false);
+
+    const sale = await caller.transaction.createSale({
+      quantity: -5,
+      position: 0,
+    });
+    if (!sale) return expect(true).toBe(false);
+
+    await caller.transaction.deleteTransaction({ id: sale.id });
+
+    const transaction = await caller.transaction.getAllTransactions();
+    expect(transaction.length).toBe(1);
   });
-
-  const sale = await caller.transaction.createSale({
-    quantity: -5,
-    position: 0,
-  });
-  if (!sale) return expect(true).toBe(false);
-
-  await expectTransactionToBe({
-    type: TransactionType.Sale,
-    quantity: -5,
-    cost: "1.97",
-
-    totalQuantity: 155,
-    totalAsset: "305.16",
-    totalCostPerUnit: "1.97",
-
-    totalTransaction: 3,
-  });
-});
-
-test("delete a purchase", async () => {
-  const purchase = await caller.transaction.createPurchase({
-    cost: 2,
-    quantity: 150,
-    position: 0,
-  });
-  if (!purchase) return expect(true).toBe(false);
-
-  await caller.transaction.deleteTransaction({ id: purchase.id });
-
-  const transaction = await caller.transaction.getAllTransactions();
-  expect(transaction.length).toBe(0);
-});
-
-test("delete a sale", async () => {
-  const purchase = await caller.transaction.createPurchase({
-    cost: 2,
-    quantity: 150,
-    position: 0,
-  });
-  if (!purchase) return expect(true).toBe(false);
-
-  const sale = await caller.transaction.createSale({
-    quantity: -5,
-    position: 0,
-  });
-  if (!sale) return expect(true).toBe(false);
-
-  await caller.transaction.deleteTransaction({ id: sale.id });
-
-  const transaction = await caller.transaction.getAllTransactions();
-  expect(transaction.length).toBe(1);
 });
 
 const expectTransactionToBe = async ({
