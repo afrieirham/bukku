@@ -3,6 +3,17 @@ import Head from "next/head";
 import Link from "next/link";
 import { useState } from "react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -88,7 +99,7 @@ function TransactionRow({ item }: { item: TransactionItem }) {
       void ctx.transaction.getAllTransactions.invalidate();
     },
   });
-  const del = api.transaction.deleteTransaction.useMutation({
+  const remove = api.transaction.deleteTransaction.useMutation({
     onSuccess: () => {
       void ctx.transaction.getAllTransactions.invalidate();
     },
@@ -102,97 +113,74 @@ function TransactionRow({ item }: { item: TransactionItem }) {
       <TableCell align="right">{item.quantity}</TableCell>
       <TableCell align="right">{item.quantity * Number(item.cost)}</TableCell>
       <TableCell>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <Sheet>
+          <SheetTrigger asChild>
             <Button variant="ghost" size="icon">
-              <ThreeDotsIcon />
+              <EditIcon />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56">
-            <Sheet>
-              <SheetTrigger className="w-full">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="flex w-full justify-start space-x-2 rounded-sm px-2 text-sm font-normal"
-                >
-                  <EditIcon />
-                  <span>Update</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="">
-                <SheetHeader>
-                  <SheetTitle>Update Transaction {item.id}</SheetTitle>
-                </SheetHeader>
-                <form
-                  onSubmit={() =>
-                    update.mutate({
-                      id: item.id,
-                      type: item.type,
-                      cost: Number(cost),
-                      quantity: Number(quantity),
-                    })
-                  }
-                  className="mt-8 space-y-4 text-sm"
-                >
-                  <div className="space-y-2">
-                    <p>Quantity</p>
-                    <Input
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <p>Cost (RM)</p>
-                    <Input
-                      value={cost}
-                      onChange={(e) => setCost(e.target.value)}
-                    />
-                  </div>
-                  <SheetFooter>
-                    <SheetClose asChild>
-                      <Button type="submit">Save changes</Button>
-                    </SheetClose>
-                  </SheetFooter>
-                </form>
-              </SheetContent>
-            </Sheet>
-
-            <DropdownMenuItem
-              className="space-x-2 px-2"
-              onClick={() => {
-                if (confirm("Are you sure?")) del.mutate({ id: item.id });
-              }}
+          </SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Update Transaction {item.id}</SheetTitle>
+            </SheetHeader>
+            <form
+              onSubmit={() =>
+                update.mutate({
+                  id: item.id,
+                  type: item.type,
+                  cost: Number(cost),
+                  quantity: Number(quantity),
+                })
+              }
+              className="mt-8 space-y-4 text-sm"
             >
+              <div className="space-y-2">
+                <p>Quantity</p>
+                <Input
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <p>Cost (RM)</p>
+                <Input value={cost} onChange={(e) => setCost(e.target.value)} />
+              </div>
+              <SheetFooter>
+                <SheetClose asChild>
+                  <Button type="submit">Save changes</Button>
+                </SheetClose>
+              </SheetFooter>
+            </form>
+          </SheetContent>
+        </Sheet>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="icon">
               <TrashIcon />
-              <span>Delete</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the
+                transaction and remove the data from our servers.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <Button variant="destructive" asChild>
+                <AlertDialogAction
+                  onClick={() => remove.mutate({ id: item.id })}
+                >
+                  Delete
+                </AlertDialogAction>
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </TableCell>
     </TableRow>
-  );
-}
-
-function ThreeDotsIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="icon icon-tabler icon-tabler-dots-vertical h-4 w-4"
-      width="44"
-      height="44"
-      viewBox="0 0 24 24"
-      strokeWidth="1.5"
-      stroke="currentColor"
-      fill="none"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-      <path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-      <path d="M12 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-      <path d="M12 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-    </svg>
   );
 }
 
