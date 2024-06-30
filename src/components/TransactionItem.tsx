@@ -35,6 +35,23 @@ type TransactionItem =
   RouterOutputs["transaction"]["getAllTransactions"][number];
 
 export default function TransactionItem({ item }: { item: TransactionItem }) {
+  return (
+    <TableRow key={item.id}>
+      <TableCell>{item.id}</TableCell>
+      <TableCell>{format(new Date(item.createdAt), "dd/MM/yyyy")}</TableCell>
+      <TableCell className="capitalize">{item.type}</TableCell>
+      <TableCell align="right">{numFormat(item.quantity, 0)}</TableCell>
+      <TableCell align="right">RM{numFormat(item.cost, 2)}</TableCell>
+      <TableCell align="right">RM{numFormat(item.totalCost, 2)}</TableCell>
+      <TableCell align="right" className="px-0">
+        <EditItemSheet item={item} />
+        <DeleteDialog item={item} />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function EditItemSheet({ item }: { item: TransactionItem }) {
   const ctx = api.useContext();
 
   const [quantity, setQuantity] = useState(String(item.quantity));
@@ -46,6 +63,66 @@ export default function TransactionItem({ item }: { item: TransactionItem }) {
       void ctx.transaction.getLatestUnitCost.invalidate();
     },
   });
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <EditIcon />
+        </Button>
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Update Transaction {item.id}</SheetTitle>
+        </SheetHeader>
+        <form
+          onSubmit={() =>
+            update.mutate({
+              id: item.id,
+              type: item.type,
+              cost: Number(cost),
+              quantity:
+                item.type === TransactionType.Sale
+                  ? -Number(quantity)
+                  : Number(quantity),
+            })
+          }
+          className="mt-8 space-y-4 text-sm"
+        >
+          <div className="space-y-2">
+            <p>Quantity</p>
+            <Input
+              value={Math.abs(Number(quantity))}
+              onChange={(e) => setQuantity(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <p>Cost (RM)</p>
+            <Input
+              value={cost}
+              onChange={(e) => setCost(e.target.value)}
+              readOnly={item.type === TransactionType.Sale}
+              className={
+                item.type === TransactionType.Sale
+                  ? "bg-gray-100 focus-visible:ring-0"
+                  : ""
+              }
+            />
+          </div>
+          <SheetFooter>
+            <SheetClose asChild>
+              <Button type="submit">Save changes</Button>
+            </SheetClose>
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function DeleteDialog({ item }: { item: TransactionItem }) {
+  const ctx = api.useContext();
+
   const remove = api.transaction.deleteTransaction.useMutation({
     onSuccess: () => {
       void ctx.transaction.getAllTransactions.invalidate();
@@ -54,93 +131,29 @@ export default function TransactionItem({ item }: { item: TransactionItem }) {
   });
 
   return (
-    <TableRow key={item.id}>
-      <TableCell>{item.id}</TableCell>
-      <TableCell>{format(new Date(item.createdAt), "dd/MM/yyyy")}</TableCell>
-      <TableCell className="capitalize">{item.type}</TableCell>
-      <TableCell align="right">{numFormat(item.quantity, 0)}</TableCell>
-      <TableCell align="right">RM{numFormat(item.cost, 2)}</TableCell>
-      <TableCell align="right">RM{numFormat(item.totalCost, 2)}</TableCell>
-      <TableCell align="right" className="px-0">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <EditIcon />
-            </Button>
-          </SheetTrigger>
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle>Update Transaction {item.id}</SheetTitle>
-            </SheetHeader>
-            <form
-              onSubmit={() =>
-                update.mutate({
-                  id: item.id,
-                  type: item.type,
-                  cost: Number(cost),
-                  quantity:
-                    item.type === TransactionType.Sale
-                      ? -Number(quantity)
-                      : Number(quantity),
-                })
-              }
-              className="mt-8 space-y-4 text-sm"
-            >
-              <div className="space-y-2">
-                <p>Quantity</p>
-                <Input
-                  value={Math.abs(Number(quantity))}
-                  onChange={(e) => setQuantity(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <p>Cost (RM)</p>
-                <Input
-                  value={cost}
-                  onChange={(e) => setCost(e.target.value)}
-                  readOnly={item.type === TransactionType.Sale}
-                  className={
-                    item.type === TransactionType.Sale
-                      ? "bg-gray-100 focus-visible:ring-0"
-                      : ""
-                  }
-                />
-              </div>
-              <SheetFooter>
-                <SheetClose asChild>
-                  <Button type="submit">Save changes</Button>
-                </SheetClose>
-              </SheetFooter>
-            </form>
-          </SheetContent>
-        </Sheet>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <TrashIcon />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                transaction and remove the data from our servers.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <Button variant="destructive" asChild>
-                <AlertDialogAction
-                  onClick={() => remove.mutate({ id: item.id })}
-                >
-                  Delete
-                </AlertDialogAction>
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </TableCell>
-    </TableRow>
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <TrashIcon />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the
+            transaction and remove the data from our servers.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <Button variant="destructive" asChild>
+            <AlertDialogAction onClick={() => remove.mutate({ id: item.id })}>
+              Delete
+            </AlertDialogAction>
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
