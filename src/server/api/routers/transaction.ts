@@ -544,32 +544,6 @@ export const transactionRouter = createTRPCRouter({
     return getLastTransaction(ctx.db);
   }),
 
-  getAllPurchases: publicProcedure.query(async ({ ctx }) => {
-    return (
-      await ctx.db.transactions.findMany({
-        where: { type: TransactionType.Purchase },
-      })
-    ).map((item) => ({
-      ...item,
-      cost: Number(item.cost),
-      totalAsset: Number(item.totalAsset),
-      costPerUnit: Number(item.costPerUnit),
-    }));
-  }),
-
-  getAllSales: publicProcedure.query(async ({ ctx }) => {
-    return (
-      await ctx.db.transactions.findMany({
-        where: { type: TransactionType.Sale },
-      })
-    ).map((item) => ({
-      ...item,
-      cost: Number(item.cost),
-      totalAsset: Number(item.totalAsset),
-      costPerUnit: Number(item.costPerUnit),
-    }));
-  }),
-
   getAllTransactions: publicProcedure.query(async ({ ctx }) => {
     const transactions = await ctx.db.transactions.findMany({});
 
