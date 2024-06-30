@@ -129,11 +129,9 @@ function Purchase() {
               <TableCell>
                 {format(new Date(item.createdAt), "dd/MM/yyyy")}
               </TableCell>
-              <TableCell align="right">{item.cost.toFixed(2)}</TableCell>
+              <TableCell align="right">{item.cost}</TableCell>
               <TableCell align="right">{item.quantity}</TableCell>
-              <TableCell align="right">
-                {(item.quantity * item.cost).toFixed(2)}
-              </TableCell>
+              <TableCell align="right">{item.quantity * item.cost}</TableCell>
               <TableCell>
                 <Button
                   variant="ghost"

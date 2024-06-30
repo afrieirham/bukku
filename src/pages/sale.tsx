@@ -88,14 +88,6 @@ function Sale() {
           onChange={(e) => setQuantity(e.target.value)}
         />
       </div>
-      {/* <div>
-        <p>Sale Price</p>
-        <Input
-          className="max-w-sm"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-        />
-      </div> */}
       <div>
         <Button disabled={!data} type="submit">
           {loading ? "Loading..." : "Submit"}
@@ -108,9 +100,7 @@ function Sale() {
             <TableHead>Date</TableHead>
             <TableHead className="text-right">Quantity</TableHead>
             <TableHead className="text-right">Cost Per Unit (RM)</TableHead>
-            {/* <TableHead className="text-right">Sale Per Unit (RM)</TableHead> */}
             <TableHead className="text-right">Total Cost (RM)</TableHead>
-            {/* <TableHead className="text-right">Total Amount (RM)</TableHead> */}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -121,14 +111,8 @@ function Sale() {
                 {format(new Date(item.createdAt), "dd/MM/yyyy")}
               </TableCell>
               <TableCell align="right">{item.quantity}</TableCell>
-              <TableCell align="right">{item.cost.toFixed(2)}</TableCell>
-              {/* <TableCell align="right">{item.price.toFixed(2)}</TableCell> */}
-              <TableCell align="right">
-                {(item.quantity * item.cost).toFixed(2)}
-              </TableCell>
-              {/* <TableCell align="right">
-                {(item.quantity * item.price).toFixed(2)}
-              </TableCell> */}
+              <TableCell align="right">{item.cost}</TableCell>
+              <TableCell align="right">{item.quantity * item.cost}</TableCell>
               <TableCell>
                 <Button
                   variant="ghost"
