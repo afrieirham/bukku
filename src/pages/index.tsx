@@ -1,3 +1,4 @@
+import { type Prisma } from "@prisma/client";
 import { format } from "date-fns";
 import Head from "next/head";
 import Link from "next/link";
@@ -15,12 +16,6 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
 import { Input } from "~/components/ui/input";
 import {
   Sheet,
@@ -73,7 +68,7 @@ export default function Home() {
               <TableHead className="text-right">Price (RM)</TableHead>
               <TableHead className="text-right">Quantity</TableHead>
               <TableHead className="text-right">Total Amount (RM)</TableHead>
-              <TableHead></TableHead>
+              <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -105,14 +100,19 @@ function TransactionRow({ item }: { item: TransactionItem }) {
     },
   });
 
+  const formatter = (num: number | string | Prisma.Decimal, decimal: number) =>
+    Number(num) < 0
+      ? String(Number(-num).toFixed(decimal))
+      : String(Number(num).toFixed(decimal));
+
   return (
     <TableRow key={item.id}>
       <TableCell>{item.id}</TableCell>
       <TableCell>{format(new Date(item.createdAt), "dd/MM/yyyy")}</TableCell>
-      <TableCell align="right">{Number(item.cost)}</TableCell>
-      <TableCell align="right">{item.quantity}</TableCell>
-      <TableCell align="right">{item.quantity * Number(item.cost)}</TableCell>
-      <TableCell>
+      <TableCell align="right">{formatter(item.cost, 2)}</TableCell>
+      <TableCell align="right">{formatter(item.quantity, 0)}</TableCell>
+      <TableCell align="right">{formatter(item.totalCost, 2)}</TableCell>
+      <TableCell align="right" className="px-0">
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon">
