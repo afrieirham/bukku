@@ -62,7 +62,7 @@ function EditItemSheet({ item }: { item: TransactionItem }) {
   const update = api.transaction.updateTransaction.useMutation({
     onSuccess: () => {
       void ctx.transaction.getAllTransactions.invalidate();
-      void ctx.transaction.getLatestUnitCost.invalidate();
+      void ctx.transaction.getLastTransaction.invalidate();
     },
   });
 
@@ -139,7 +139,7 @@ function DeleteDialog({ item }: { item: TransactionItem }) {
   const remove = api.transaction.deleteTransaction.useMutation({
     onSuccess: () => {
       void ctx.transaction.getAllTransactions.invalidate();
-      void ctx.transaction.getLatestUnitCost.invalidate();
+      void ctx.transaction.getLastTransaction.invalidate();
     },
   });
 

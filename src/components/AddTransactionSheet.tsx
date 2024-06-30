@@ -79,7 +79,7 @@ function PurchaseForm() {
       setPosition("");
       setLoading(false);
       void ctx.transaction.getAllTransactions.invalidate();
-      void ctx.transaction.getLatestUnitCost.invalidate();
+      void ctx.transaction.getLastTransaction.invalidate();
     },
   });
 
@@ -165,7 +165,7 @@ function SaleForm() {
       setQuantity("");
       setPosition("");
       setLoading(false);
-      void ctx.transaction.getLatestUnitCost.invalidate();
+      void ctx.transaction.getLastTransaction.invalidate();
       void ctx.transaction.getAllTransactions.invalidate();
     },
   });

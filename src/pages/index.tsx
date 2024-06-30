@@ -15,7 +15,7 @@ import { numFormat } from "~/utils/formatter";
 
 export default function Home() {
   const { data } = api.transaction.getAllTransactions.useQuery();
-  const current = api.transaction.getLatestUnitCost.useQuery();
+  const current = api.transaction.getLastTransaction.useQuery();
 
   return (
     <>

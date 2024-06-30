@@ -128,7 +128,7 @@ const expectTransactionToBe = async ({
   totalTransaction: number;
 }) => {
   const transactions = await caller.transaction.getAllTransactions();
-  const last = await caller.transaction.getLatestUnitCost();
+  const last = await caller.transaction.getLastTransaction();
   if (!last) {
     return;
   }

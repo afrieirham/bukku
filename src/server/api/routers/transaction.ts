@@ -521,7 +521,7 @@ export const transactionRouter = createTRPCRouter({
       return await recalculateTransactionFrom(next.id);
     }),
 
-  getLatestUnitCost: publicProcedure.query(async ({}) => {
+  getLastTransaction: publicProcedure.query(async ({}) => {
     return getLastTransaction();
   }),
 
