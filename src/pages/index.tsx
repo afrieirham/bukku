@@ -11,6 +11,20 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { api } from "~/utils/api";
 
 export default function Home() {
@@ -61,14 +75,13 @@ export default function Home() {
               <TableHead className="text-right">Price (RM)</TableHead>
               <TableHead className="text-right">Quantity</TableHead>
               <TableHead className="text-right">Total Amount (RM)</TableHead>
-              <TableHead>Update</TableHead>
-              <TableHead>Delete</TableHead>
+              <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data?.map((item) => (
               <TableRow key={item.id}>
-                <TableCell>{item.id}</TableCell>{" "}
+                <TableCell>{item.id}</TableCell>
                 <TableCell>
                   {format(new Date(item.createdAt), "dd/MM/yyyy")}
                 </TableCell>
@@ -78,35 +91,45 @@ export default function Home() {
                   {item.quantity * Number(item.cost)}
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="link"
-                    type="button"
-                    onClick={() => {
-                      const quantity = Number(
-                        prompt("Quantity?", String(item.quantity)),
-                      );
-                      const cost = Number(prompt("Cost?", String(item.cost)));
-                      update.mutate({
-                        id: item.id,
-                        quantity,
-                        cost,
-                        type: item.type,
-                      });
-                    }}
-                  >
-                    Update
-                  </Button>
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="link"
-                    type="button"
-                    onClick={() => {
-                      del.mutate({ id: item.id });
-                    }}
-                  >
-                    Delete
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <ThreeDotsIcon />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56">
+                      <DropdownMenuItem
+                        className="space-x-2"
+                        onClick={() => {
+                          const quantity = Number(
+                            prompt("Quantity?", String(item.quantity)),
+                          );
+                          const cost = Number(
+                            prompt("Cost?", String(item.cost)),
+                          );
+                          update.mutate({
+                            id: item.id,
+                            quantity,
+                            cost,
+                            type: item.type,
+                          });
+                        }}
+                      >
+                        <EditIcon />
+                        <span>Update</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="space-x-2"
+                        onClick={() => {
+                          if (confirm("Are you sure?"))
+                            del.mutate({ id: item.id });
+                        }}
+                      >
+                        <TrashIcon />
+                        <span>Delete</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
@@ -114,5 +137,73 @@ export default function Home() {
         </Table>
       </main>
     </>
+  );
+}
+
+function ThreeDotsIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="icon icon-tabler icon-tabler-dots-vertical h-4 w-4"
+      width="44"
+      height="44"
+      viewBox="0 0 24 24"
+      strokeWidth="1.5"
+      stroke="currentColor"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M12 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M12 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="icon icon-tabler icon-tabler-edit h-4 w-4"
+      width="44"
+      height="44"
+      viewBox="0 0 24 24"
+      strokeWidth="1.5"
+      stroke="currentColor"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" />
+      <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" />
+      <path d="M16 5l3 3" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="icon icon-tabler icon-tabler-trash h-4 w-4"
+      width="44"
+      height="44"
+      viewBox="0 0 24 24"
+      strokeWidth="1.5"
+      stroke="currentColor"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M4 7l16 0" />
+      <path d="M10 11l0 6" />
+      <path d="M14 11l0 6" />
+      <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+      <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+    </svg>
   );
 }
