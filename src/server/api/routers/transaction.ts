@@ -195,14 +195,18 @@ const recalculateTransactionFrom = async (db: dbType, initialId: number) => {
   return;
 };
 
-const defaultInsert = async (db: dbType, cost: number, quantity: number) => {
+const defaultCreatePurchase = async (
+  db: dbType,
+  cost: number,
+  quantity: number,
+) => {
   const totalCost = cost * quantity;
 
   // get latest transaction record
-  const lastTrx = await getLastTransaction(db);
+  const previous = await getLastTransaction(db);
 
   // first transaction
-  if (!lastTrx) {
+  if (!previous) {
     return await db.transactions.create({
       data: {
         type: "purchase",
@@ -219,8 +223,8 @@ const defaultInsert = async (db: dbType, cost: number, quantity: number) => {
     });
   }
 
-  const totalQuantity = lastTrx.totalQuantity + quantity;
-  const totalAsset = Number(lastTrx.totalAsset) + totalCost;
+  const totalQuantity = previous.totalQuantity + quantity;
+  const totalAsset = Number(previous.totalAsset) + totalCost;
 
   // add new purchase
   const newPurchase = await db.transactions.create({
@@ -234,13 +238,13 @@ const defaultInsert = async (db: dbType, cost: number, quantity: number) => {
       totalAsset: totalAsset,
       costPerUnit: totalAsset / totalQuantity,
 
-      previousId: lastTrx.id,
+      previousId: previous.id,
     },
   });
 
   // update previous's next
   await db.transactions.update({
-    where: { id: lastTrx.id },
+    where: { id: previous.id },
     data: { nextId: newPurchase.id },
   });
 
@@ -268,8 +272,13 @@ export const transactionRouter = createTRPCRouter({
         const head = await ctx.db.transactions.findFirst({
           where: { previousId: null },
         });
+
         if (!head) {
-          return await defaultInsert(ctx.db, input.cost, input.quantity);
+          return await defaultCreatePurchase(
+            ctx.db,
+            input.cost,
+            input.quantity,
+          );
         }
 
         // create and update my next to head id
@@ -307,7 +316,11 @@ export const transactionRouter = createTRPCRouter({
         }
 
         if (!newPrevious.nextId) {
-          return await defaultInsert(ctx.db, input.cost, input.quantity);
+          return await defaultCreatePurchase(
+            ctx.db,
+            input.cost,
+            input.quantity,
+          );
         }
 
         // connect to list
@@ -372,7 +385,7 @@ export const transactionRouter = createTRPCRouter({
         return;
       }
 
-      return await defaultInsert(ctx.db, input.cost, input.quantity);
+      return await defaultCreatePurchase(ctx.db, input.cost, input.quantity);
     }),
 
   getAllPurchases: publicProcedure.query(async ({ ctx }) => {
