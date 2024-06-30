@@ -1,52 +1,17 @@
-import { type Prisma } from "@prisma/client";
-import { format } from "date-fns";
 import Head from "next/head";
-import { useState } from "react";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "~/components/ui/alert-dialog";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "~/components/ui/sheet";
+import AddTransactionSheet from "~/components/AddTransactionSheet";
+import TransactionItem from "~/components/TransactionItem";
+
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import { TransactionType } from "~/constant";
-import { api, type RouterOutputs } from "~/utils/api";
-
-const formatter = (num: number | string | Prisma.Decimal, decimal: number) =>
-  Number(num) < 0
-    ? String(Number(-num).toFixed(decimal))
-    : String(Number(num).toFixed(decimal));
+import { api } from "~/utils/api";
+import { numFormat } from "~/utils/formatter";
 
 export default function Home() {
   const { data } = api.transaction.getAllTransactions.useQuery();
@@ -72,7 +37,7 @@ export default function Home() {
             <div className="p-6 pt-0">
               <div className="text-2xl font-bold">
                 RM
-                {current.data ? formatter(current.data.totalAsset, 2) : "--.--"}
+                {current.data ? numFormat(current.data.totalAsset, 2) : "--.--"}
               </div>
             </div>
           </div>
@@ -86,7 +51,7 @@ export default function Home() {
               <div className="text-2xl font-bold">
                 RM
                 {current.data
-                  ? formatter(current.data.costPerUnit, 2)
+                  ? numFormat(current.data.costPerUnit, 2)
                   : "--.--"}
               </div>
             </div>
@@ -97,14 +62,14 @@ export default function Home() {
             </div>
             <div className="p-6 pt-0">
               <div className="text-2xl font-bold">
-                {current.data ? formatter(current.data.totalQuantity, 0) : 0}
+                {current.data ? numFormat(current.data.totalQuantity, 0) : 0}
               </div>
             </div>
           </div>
         </div>
         <div>
           <div className="flex w-full justify-end">
-            <TransactionForm hasTransaction={Boolean(current.data)} />
+            <AddTransactionSheet hasTransaction={Boolean(current.data)} />
           </div>
           <div className="mt-2 rounded-lg border">
             <Table>
@@ -121,7 +86,7 @@ export default function Home() {
               </TableHeader>
               <TableBody>
                 {data?.map((item) => (
-                  <TransactionRow key={item.id} item={item} />
+                  <TransactionItem key={item.id} item={item} />
                 ))}
               </TableBody>
             </Table>
@@ -129,341 +94,5 @@ export default function Home() {
         </div>
       </main>
     </>
-  );
-}
-
-function TransactionForm({ hasTransaction }: { hasTransaction: boolean }) {
-  const [type, setType] = useState("");
-
-  return (
-    <Sheet onOpenChange={() => setType("")}>
-      <SheetTrigger asChild>
-        <Button variant="outline">Add Transaction</Button>
-      </SheetTrigger>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>Add Transaction </SheetTitle>
-        </SheetHeader>
-        <div className="mt-8 space-y-4 text-sm">
-          <div className="space-y-2">
-            <p>Type</p>
-            <Select onValueChange={(value) => setType(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Transaction type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TransactionType.Purchase}>
-                  Purchase
-                </SelectItem>
-                {hasTransaction && (
-                  <SelectItem value={TransactionType.Sale}>Sale</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          {type === TransactionType.Purchase && <PurchaseForm />}
-          {type === TransactionType.Sale && <SaleForm />}
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-function PurchaseForm() {
-  const ctx = api.useContext();
-
-  const [loading, setLoading] = useState(false);
-
-  const [cost, setCost] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [position, setPosition] = useState("");
-
-  const { mutate } = api.transaction.createPurchase.useMutation({
-    onSuccess: () => {
-      alert("Purchase added!");
-      setQuantity("");
-      setCost("");
-      setPosition("");
-      setLoading(false);
-      void ctx.transaction.getAllTransactions.invalidate();
-      void ctx.transaction.getLatestUnitCost.invalidate();
-    },
-  });
-
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    setLoading(true);
-
-    if (!cost) {
-      alert("Price cant be empty");
-      setLoading(false);
-      return;
-    }
-
-    if (!quantity) {
-      alert("Quantity cant be empty");
-      setLoading(false);
-      return;
-    }
-
-    mutate({
-      cost: Number(cost),
-      quantity: Number(quantity),
-      position: Number(position),
-    });
-  };
-
-  return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <p>Quantity</p>
-        <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-      </div>
-      <div className="space-y-2">
-        <p>Cost (RM)</p>
-        <Input value={cost} onChange={(e) => setCost(e.target.value)} />
-      </div>
-      <div className="space-y-2">
-        <p>Position</p>
-        <ul className="list-inside list-disc text-xs text-gray-500">
-          <li>-1 to add to the top</li>
-          <li>Enter transaction ID to insert after it</li>
-          <li>Leave empty for default</li>
-        </ul>
-        <Input
-          className="max-w-sm"
-          value={position}
-          onChange={(e) => setPosition(e.target.value)}
-        />
-      </div>
-      <SheetFooter>
-        <SheetClose asChild>
-          <Button type="submit">{loading ? "Saving..." : "Submit"}</Button>
-        </SheetClose>
-      </SheetFooter>
-    </form>
-  );
-}
-
-function SaleForm() {
-  const ctx = api.useContext();
-
-  const [loading, setLoading] = useState(false);
-
-  const [quantity, setQuantity] = useState("");
-  const [position, setPosition] = useState("");
-
-  const { mutate } = api.transaction.createSale.useMutation({
-    onSuccess: () => {
-      alert("Sale added!");
-      setQuantity("");
-      setPosition("");
-      setLoading(false);
-      void ctx.transaction.getLatestUnitCost.invalidate();
-      void ctx.transaction.getAllTransactions.invalidate();
-    },
-  });
-
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!quantity) {
-      alert("Quantity cant be empty");
-      setLoading(false);
-      return;
-    }
-
-    mutate({
-      quantity: -Number(quantity),
-      position: Number(position),
-    });
-  };
-
-  return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <p>Quantity</p>
-        <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-      </div>
-
-      <div className="space-y-2">
-        <p>Position</p>
-        <ul className="list-inside list-disc text-xs text-gray-500">
-          <li>Enter transaction ID to insert after it</li>
-          <li>Leave empty for default</li>
-        </ul>
-        <Input
-          className="max-w-sm"
-          value={position}
-          onChange={(e) => setPosition(e.target.value)}
-        />
-      </div>
-      <SheetFooter>
-        <SheetClose asChild>
-          <Button type="submit">{loading ? "Saving..." : "Submit"}</Button>
-        </SheetClose>
-      </SheetFooter>
-    </form>
-  );
-}
-
-type TransactionItem =
-  RouterOutputs["transaction"]["getAllTransactions"][number];
-
-function TransactionRow({ item }: { item: TransactionItem }) {
-  const ctx = api.useContext();
-
-  const [quantity, setQuantity] = useState(String(item.quantity));
-  const [cost, setCost] = useState(String(item.cost));
-
-  const update = api.transaction.updateTransaction.useMutation({
-    onSuccess: () => {
-      void ctx.transaction.getAllTransactions.invalidate();
-      void ctx.transaction.getLatestUnitCost.invalidate();
-    },
-  });
-  const remove = api.transaction.deleteTransaction.useMutation({
-    onSuccess: () => {
-      void ctx.transaction.getAllTransactions.invalidate();
-      void ctx.transaction.getLatestUnitCost.invalidate();
-    },
-  });
-
-  return (
-    <TableRow key={item.id}>
-      <TableCell>{item.id}</TableCell>
-      <TableCell>{format(new Date(item.createdAt), "dd/MM/yyyy")}</TableCell>
-      <TableCell className="capitalize">{item.type}</TableCell>
-      <TableCell align="right">{formatter(item.quantity, 0)}</TableCell>
-      <TableCell align="right">RM{formatter(item.cost, 2)}</TableCell>
-      <TableCell align="right">RM{formatter(item.totalCost, 2)}</TableCell>
-      <TableCell align="right" className="px-0">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <EditIcon />
-            </Button>
-          </SheetTrigger>
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle>Update Transaction {item.id}</SheetTitle>
-            </SheetHeader>
-            <form
-              onSubmit={() =>
-                update.mutate({
-                  id: item.id,
-                  type: item.type,
-                  cost: Number(cost),
-                  quantity:
-                    item.type === TransactionType.Sale
-                      ? -Number(quantity)
-                      : Number(quantity),
-                })
-              }
-              className="mt-8 space-y-4 text-sm"
-            >
-              <div className="space-y-2">
-                <p>Quantity</p>
-                <Input
-                  value={Math.abs(Number(quantity))}
-                  onChange={(e) => setQuantity(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <p>Cost (RM)</p>
-                <Input
-                  value={cost}
-                  onChange={(e) => setCost(e.target.value)}
-                  readOnly={item.type === TransactionType.Sale}
-                  className={
-                    item.type === TransactionType.Sale
-                      ? "bg-gray-100 focus-visible:ring-0"
-                      : ""
-                  }
-                />
-              </div>
-              <SheetFooter>
-                <SheetClose asChild>
-                  <Button type="submit">Save changes</Button>
-                </SheetClose>
-              </SheetFooter>
-            </form>
-          </SheetContent>
-        </Sheet>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <TrashIcon />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                transaction and remove the data from our servers.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <Button variant="destructive" asChild>
-                <AlertDialogAction
-                  onClick={() => remove.mutate({ id: item.id })}
-                >
-                  Delete
-                </AlertDialogAction>
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function EditIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="icon icon-tabler icon-tabler-edit h-4 w-4"
-      width="44"
-      height="44"
-      viewBox="0 0 24 24"
-      strokeWidth="1.5"
-      stroke="currentColor"
-      fill="none"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-      <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" />
-      <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" />
-      <path d="M16 5l3 3" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="icon icon-tabler icon-tabler-trash h-4 w-4"
-      width="44"
-      height="44"
-      viewBox="0 0 24 24"
-      strokeWidth="1.5"
-      stroke="currentColor"
-      fill="none"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-      <path d="M4 7l16 0" />
-      <path d="M10 11l0 6" />
-      <path d="M14 11l0 6" />
-      <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
-      <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
-    </svg>
   );
 }
