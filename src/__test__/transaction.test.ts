@@ -1,4 +1,4 @@
-import { describe, expect, test, afterEach } from "@jest/globals";
+import { describe, expect, test, afterEach, beforeEach } from "@jest/globals";
 
 import { createInnerTRPCContext } from "~/server/api/trpc";
 import { appRouter } from "~/server/api/root";
@@ -7,12 +7,15 @@ import { db } from "~/server/db";
 const ctx = createInnerTRPCContext({});
 const caller = appRouter.createCaller(ctx);
 
-afterEach(async () => {
+const reset = async () => {
   await db.transactions.deleteMany({});
   await db.$executeRawUnsafe(
     "UPDATE sqlite_sequence SET seq=0 WHERE name='Transactions';",
   );
-});
+};
+
+beforeEach(reset);
+afterEach(reset);
 
 describe("transactions", () => {
   test("empty transaction", async () => {
@@ -96,6 +99,29 @@ describe("transactions", () => {
       type: wrongQuantity.type,
     });
 
+    await expectRecordToBe({
+      totalTransaction: 3,
+      totalQuantity: 155,
+      totalAsset: "305.16",
+      totalCostPerUnit: "1.97",
+    });
+
+    // delete first transaction
+    await caller.transaction.deleteTransaction({ id: first.id });
+
+    await expectRecordToBe({
+      totalTransaction: 2,
+      totalQuantity: 5,
+      totalAsset: "7.50",
+      totalCostPerUnit: "1.50",
+    });
+
+    // add first transaction again
+    await caller.transaction.createPurchase({
+      cost: 2,
+      quantity: 150,
+      position: -1,
+    });
     await expectRecordToBe({
       totalTransaction: 3,
       totalQuantity: 155,
