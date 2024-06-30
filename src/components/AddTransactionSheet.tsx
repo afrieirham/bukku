@@ -100,6 +100,18 @@ function PurchaseForm() {
       return;
     }
 
+    if (Number(quantity) < 1) {
+      alert("Quantity should at least be 1");
+      setLoading(false);
+      return;
+    }
+
+    if (Number(cost) <= 0) {
+      alert("Cost should at least be 0.01");
+      setLoading(false);
+      return;
+    }
+
     mutate({
       cost: Number(cost),
       quantity: Number(quantity),
@@ -163,6 +175,12 @@ function SaleForm() {
 
     if (!quantity) {
       alert("Quantity cant be empty");
+      setLoading(false);
+      return;
+    }
+
+    if (Number(quantity) < 1) {
+      alert("Quantity should at least be 1");
       setLoading(false);
       return;
     }

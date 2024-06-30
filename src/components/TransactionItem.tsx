@@ -54,7 +54,9 @@ export default function TransactionItem({ item }: { item: TransactionItem }) {
 function EditItemSheet({ item }: { item: TransactionItem }) {
   const ctx = api.useContext();
 
-  const [quantity, setQuantity] = useState(String(item.quantity));
+  const initialQuantity = String(Math.abs(Number(item.quantity)));
+
+  const [quantity, setQuantity] = useState(initialQuantity);
   const [cost, setCost] = useState(String(item.cost));
 
   const update = api.transaction.updateTransaction.useMutation({
@@ -63,6 +65,30 @@ function EditItemSheet({ item }: { item: TransactionItem }) {
       void ctx.transaction.getLatestUnitCost.invalidate();
     },
   });
+
+  const onUpdate = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (Number(quantity) < 1) {
+      alert("Quantity should at least be 1");
+      return;
+    }
+
+    if (Number(cost) <= 0) {
+      alert("Cost should at least be 0.01");
+      return;
+    }
+
+    update.mutate({
+      id: item.id,
+      type: item.type,
+      cost: Number(cost),
+      quantity:
+        item.type === TransactionType.Sale
+          ? -Number(quantity)
+          : Number(quantity),
+    });
+  };
 
   return (
     <Sheet>
@@ -75,24 +101,11 @@ function EditItemSheet({ item }: { item: TransactionItem }) {
         <SheetHeader>
           <SheetTitle>Update Transaction {item.id}</SheetTitle>
         </SheetHeader>
-        <form
-          onSubmit={() =>
-            update.mutate({
-              id: item.id,
-              type: item.type,
-              cost: Number(cost),
-              quantity:
-                item.type === TransactionType.Sale
-                  ? -Number(quantity)
-                  : Number(quantity),
-            })
-          }
-          className="mt-8 space-y-4 text-sm"
-        >
+        <form onSubmit={onUpdate} className="mt-8 space-y-4 text-sm">
           <div className="space-y-2">
             <p>Quantity</p>
             <Input
-              value={Math.abs(Number(quantity))}
+              value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
             />
           </div>
