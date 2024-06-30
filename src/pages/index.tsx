@@ -80,7 +80,7 @@ export default function Home() {
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Quantity</TableHead>
                   <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Total Amount</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
