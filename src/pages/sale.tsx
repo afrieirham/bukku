@@ -19,6 +19,7 @@ function Sale() {
 
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState("");
+  const [position, setPosition] = useState("");
 
   const update = api.transaction.updateTransaction.useMutation({
     onSuccess: () => {
@@ -38,6 +39,7 @@ function Sale() {
     onSuccess: () => {
       alert("Sale added!");
       setQuantity("");
+      setPosition("");
       setLoading(false);
       void ctx.transaction.getLatestUnitCost.invalidate();
       void ctx.transaction.getAllSales.invalidate();
@@ -58,7 +60,10 @@ function Sale() {
       return;
     }
 
-    mutate({ quantity: -Number(quantity) });
+    mutate({
+      quantity: -Number(quantity),
+      position: Number(position),
+    });
   };
 
   return (
@@ -86,6 +91,18 @@ function Sale() {
           className="max-w-sm"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
+        />
+      </div>
+      <div>
+        <p>Position</p>
+        <ul className="list-inside list-disc text-xs text-gray-500">
+          <li>Enter transaction ID to insert after it</li>
+          <li>Leave empty for default</li>
+        </ul>
+        <Input
+          className="max-w-sm"
+          value={position}
+          onChange={(e) => setPosition(e.target.value)}
         />
       </div>
       <div>

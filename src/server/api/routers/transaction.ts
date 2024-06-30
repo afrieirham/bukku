@@ -255,6 +255,42 @@ const getLastTransaction = async (db: dbType) => {
   return await db.transactions.findFirst({ where: { nextId: null } });
 };
 
+const defaultCreateSale = async (db: dbType, quantity: number) => {
+  // get latest transaction record
+  const previous = await getLastTransaction(db);
+  if (!previous) {
+    return;
+  }
+
+  const totalCost = Number(previous.costPerUnit) * quantity;
+  const totalQuantity = previous.totalQuantity + quantity;
+  const totalAsset = Number(previous.totalAsset) + totalCost;
+  const costPerUnit = totalQuantity === 0 ? 0 : totalAsset / totalQuantity;
+
+  const newSale = await db.transactions.create({
+    data: {
+      type: "sale",
+      quantity: quantity,
+      cost: previous.costPerUnit,
+      totalCost: totalCost,
+
+      totalQuantity: totalQuantity,
+      totalAsset: totalAsset,
+      costPerUnit: costPerUnit,
+
+      previousId: previous.id,
+    },
+  });
+
+  // update previous's next
+  await db.transactions.update({
+    where: { id: previous.id },
+    data: { nextId: newSale.id },
+  });
+
+  return newSale;
+};
+
 export const transactionRouter = createTRPCRouter({
   createPurchase: publicProcedure
     .input(
@@ -389,41 +425,85 @@ export const transactionRouter = createTRPCRouter({
     }),
 
   createSale: publicProcedure
-    .input(z.object({ quantity: z.number() }))
+    .input(z.object({ quantity: z.number(), position: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      // get latest transaction record
-      const previous = await getLastTransaction(ctx.db);
-      if (!previous) {
-        return;
+      if (input.position > 0) {
+        // check if position is tail
+        const newPrevious = await ctx.db.transactions.findFirst({
+          where: { id: input.position },
+        });
+        if (!newPrevious) {
+          return;
+        }
+
+        if (!newPrevious.nextId) {
+          return await defaultCreateSale(ctx.db, input.quantity);
+        }
+
+        // connect to list
+        // 1. update my previous to previous id
+        // 2. update my next to previous's next
+        const newSalePrevious = newPrevious.id;
+        const newSaleNext = newPrevious.nextId;
+
+        // clear pointers
+        // 1. clear previous's next pointer
+        await ctx.db.transactions.update({
+          where: { id: newPrevious.id },
+          data: {
+            nextId: null,
+          },
+        });
+        // 2. clear next's previous pointer
+        await ctx.db.transactions.update({
+          where: { id: newPrevious.nextId },
+          data: {
+            previousId: null,
+          },
+        });
+
+        const previousCostPerUnit = Number(newPrevious.costPerUnit);
+        const totalCost = previousCostPerUnit * input.quantity;
+        const totalQuantity = newPrevious.totalQuantity + input.quantity;
+        const totalAsset = Number(newPrevious.totalAsset) + totalCost;
+
+        const newSale = await ctx.db.transactions.create({
+          data: {
+            type: "sale",
+            quantity: input.quantity,
+            cost: previousCostPerUnit,
+            totalCost: totalCost,
+
+            totalQuantity: totalQuantity,
+            totalAsset: totalAsset,
+            costPerUnit: totalAsset / totalQuantity,
+
+            previousId: newSalePrevious,
+            nextId: newSaleNext,
+          },
+        });
+
+        // update previous and next pointer
+        // 1. previous's next = my id
+        await ctx.db.transactions.update({
+          where: { id: newPrevious.id },
+          data: {
+            nextId: newSale.id,
+          },
+        });
+
+        // 2. next's previous = my id
+        await ctx.db.transactions.update({
+          where: { id: newPrevious.nextId },
+          data: {
+            previousId: newSale.id,
+          },
+        });
+
+        return await recalculateTransactionFrom(ctx.db, newSale.id);
       }
 
-      const totalCost = Number(previous.costPerUnit) * input.quantity;
-      const totalQuantity = previous.totalQuantity + input.quantity;
-      const totalAsset = Number(previous.totalAsset) + totalCost;
-      const costPerUnit = totalQuantity === 0 ? 0 : totalAsset / totalQuantity;
-
-      const newSale = await ctx.db.transactions.create({
-        data: {
-          type: "sale",
-          quantity: input.quantity,
-          cost: previous.costPerUnit,
-          totalCost: totalCost,
-
-          totalQuantity: totalQuantity,
-          totalAsset: totalAsset,
-          costPerUnit: costPerUnit,
-
-          previousId: previous.id,
-        },
-      });
-
-      // update previous's next
-      await ctx.db.transactions.update({
-        where: { id: previous.id },
-        data: { nextId: newSale.id },
-      });
-
-      return newSale;
+      return await defaultCreateSale(ctx.db, input.quantity);
     }),
 
   updateTransaction: publicProcedure
