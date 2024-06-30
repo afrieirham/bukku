@@ -60,49 +60,50 @@ export default function Home() {
       </Head>
       <main className="mx-auto flex w-full max-w-screen-lg flex-col justify-center space-y-8 pt-16">
         <h1 className="text-2xl font-bold">Bukku Dashboard</h1>
-        {current?.data && (
-          <div className="flex w-full space-x-2">
-            <div className="bg-card text-card-foreground w-full rounded-xl border shadow">
-              <div className="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
-                <h3 className="text-sm font-medium tracking-tight">
-                  Total Amount
-                </h3>
-              </div>
-              <div className="p-6 pt-0">
-                <div className="text-2xl font-bold">
-                  RM{formatter(current.data.totalAsset, 2)}
-                </div>
-              </div>
+
+        <div className="flex w-full space-x-2">
+          <div className="bg-card text-card-foreground w-full rounded-xl border shadow">
+            <div className="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
+              <h3 className="text-sm font-medium tracking-tight">
+                Total Amount
+              </h3>
             </div>
-            <div className="bg-card text-card-foreground w-full rounded-xl border shadow">
-              <div className="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
-                <h3 className="text-sm font-medium tracking-tight">
-                  Cost Per Unit
-                </h3>
-              </div>
-              <div className="p-6 pt-0">
-                <div className="text-2xl font-bold">
-                  RM{formatter(current.data.costPerUnit, 2)}
-                </div>
-              </div>
-            </div>
-            <div className="bg-card text-card-foreground w-full rounded-xl border shadow">
-              <div className="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
-                <h3 className="text-sm font-medium tracking-tight">
-                  Inventory
-                </h3>
-              </div>
-              <div className="p-6 pt-0">
-                <div className="text-2xl font-bold">
-                  {formatter(current.data.totalQuantity, 0)}
-                </div>
+            <div className="p-6 pt-0">
+              <div className="text-2xl font-bold">
+                RM
+                {current.data ? formatter(current.data.totalAsset, 2) : "--.--"}
               </div>
             </div>
           </div>
-        )}
+          <div className="bg-card text-card-foreground w-full rounded-xl border shadow">
+            <div className="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
+              <h3 className="text-sm font-medium tracking-tight">
+                Cost Per Unit
+              </h3>
+            </div>
+            <div className="p-6 pt-0">
+              <div className="text-2xl font-bold">
+                RM
+                {current.data
+                  ? formatter(current.data.costPerUnit, 2)
+                  : "--.--"}
+              </div>
+            </div>
+          </div>
+          <div className="bg-card text-card-foreground w-full rounded-xl border shadow">
+            <div className="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
+              <h3 className="text-sm font-medium tracking-tight">Inventory</h3>
+            </div>
+            <div className="p-6 pt-0">
+              <div className="text-2xl font-bold">
+                {current.data ? formatter(current.data.totalQuantity, 0) : 0}
+              </div>
+            </div>
+          </div>
+        </div>
         <div>
           <div className="flex w-full justify-end">
-            <TransactionForm />
+            <TransactionForm hasTransaction={Boolean(current.data)} />
           </div>
           <div className="mt-2 rounded-lg border">
             <Table>
@@ -130,7 +131,7 @@ export default function Home() {
   );
 }
 
-function TransactionForm() {
+function TransactionForm({ hasTransaction }: { hasTransaction: boolean }) {
   const [type, setType] = useState("");
 
   return (
@@ -151,7 +152,7 @@ function TransactionForm() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="purchase">Purchase</SelectItem>
-                <SelectItem value="sale">Sale</SelectItem>
+                {hasTransaction && <SelectItem value="sale">Sale</SelectItem>}
               </SelectContent>
             </Select>
           </div>
@@ -349,7 +350,8 @@ function TransactionRow({ item }: { item: TransactionItem }) {
                   id: item.id,
                   type: item.type,
                   cost: Number(cost),
-                  quantity: Number(quantity),
+                  quantity:
+                    item.type === "sale" ? -Number(quantity) : Number(quantity),
                 })
               }
               className="mt-8 space-y-4 text-sm"
@@ -357,13 +359,22 @@ function TransactionRow({ item }: { item: TransactionItem }) {
               <div className="space-y-2">
                 <p>Quantity</p>
                 <Input
-                  value={quantity}
+                  value={Math.abs(Number(quantity))}
                   onChange={(e) => setQuantity(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <p>Cost (RM)</p>
-                <Input value={cost} onChange={(e) => setCost(e.target.value)} />
+                <Input
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  readOnly={item.type === "sale"}
+                  className={
+                    item.type === "sale"
+                      ? "bg-gray-100 focus-visible:ring-0"
+                      : ""
+                  }
+                />
               </div>
               <SheetFooter>
                 <SheetClose asChild>
