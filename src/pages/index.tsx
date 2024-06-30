@@ -1,8 +1,25 @@
 import { format } from "date-fns";
 import Head from "next/head";
 import Link from "next/link";
+import { useState } from "react";
 
 import { Button } from "~/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { Input } from "~/components/ui/input";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "~/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -11,41 +28,11 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuPortal,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import { api } from "~/utils/api";
+import { api, type RouterOutputs } from "~/utils/api";
 
 export default function Home() {
-  const ctx = api.useContext();
-
   const { data } = api.transaction.getAllTransactions.useQuery();
-  const update = api.transaction.updateTransaction.useMutation({
-    onSuccess: () => {
-      void ctx.transaction.getAllTransactions.invalidate();
-    },
-  });
-  const del = api.transaction.deleteTransaction.useMutation({
-    onSuccess: () => {
-      void ctx.transaction.getAllTransactions.invalidate();
-    },
-  });
 
-  if (!data) {
-    return;
-  }
-  console.log("data", data);
   return (
     <>
       <Head>
@@ -79,64 +66,111 @@ export default function Home() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data?.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.id}</TableCell>
-                <TableCell>
-                  {format(new Date(item.createdAt), "dd/MM/yyyy")}
-                </TableCell>
-                <TableCell align="right">{Number(item.cost)}</TableCell>
-                <TableCell align="right">{item.quantity}</TableCell>
-                <TableCell align="right">
-                  {item.quantity * Number(item.cost)}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <ThreeDotsIcon />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56">
-                      <DropdownMenuItem
-                        className="space-x-2"
-                        onClick={() => {
-                          const quantity = Number(
-                            prompt("Quantity?", String(item.quantity)),
-                          );
-                          const cost = Number(
-                            prompt("Cost?", String(item.cost)),
-                          );
-                          update.mutate({
-                            id: item.id,
-                            quantity,
-                            cost,
-                            type: item.type,
-                          });
-                        }}
-                      >
-                        <EditIcon />
-                        <span>Update</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="space-x-2"
-                        onClick={() => {
-                          if (confirm("Are you sure?"))
-                            del.mutate({ id: item.id });
-                        }}
-                      >
-                        <TrashIcon />
-                        <span>Delete</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+            {data?.map((item) => <TransactionRow key={item.id} item={item} />)}
           </TableBody>
         </Table>
       </main>
     </>
+  );
+}
+
+type TransactionItem =
+  RouterOutputs["transaction"]["getAllTransactions"][number];
+
+function TransactionRow({ item }: { item: TransactionItem }) {
+  const ctx = api.useContext();
+
+  const [quantity, setQuantity] = useState(String(item.quantity));
+  const [cost, setCost] = useState(String(item.cost));
+
+  const update = api.transaction.updateTransaction.useMutation({
+    onSuccess: () => {
+      void ctx.transaction.getAllTransactions.invalidate();
+    },
+  });
+  const del = api.transaction.deleteTransaction.useMutation({
+    onSuccess: () => {
+      void ctx.transaction.getAllTransactions.invalidate();
+    },
+  });
+
+  return (
+    <TableRow key={item.id}>
+      <TableCell>{item.id}</TableCell>
+      <TableCell>{format(new Date(item.createdAt), "dd/MM/yyyy")}</TableCell>
+      <TableCell align="right">{Number(item.cost)}</TableCell>
+      <TableCell align="right">{item.quantity}</TableCell>
+      <TableCell align="right">{item.quantity * Number(item.cost)}</TableCell>
+      <TableCell>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <ThreeDotsIcon />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
+            <Sheet>
+              <SheetTrigger className="w-full">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="flex w-full justify-start space-x-2 rounded-sm px-2 text-sm font-normal"
+                >
+                  <EditIcon />
+                  <span>Update</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="">
+                <SheetHeader>
+                  <SheetTitle>Update Transaction {item.id}</SheetTitle>
+                </SheetHeader>
+                <form
+                  onSubmit={() =>
+                    update.mutate({
+                      id: item.id,
+                      type: item.type,
+                      cost: Number(cost),
+                      quantity: Number(quantity),
+                    })
+                  }
+                  className="mt-8 space-y-4 text-sm"
+                >
+                  <div className="space-y-2">
+                    <p>Quantity</p>
+                    <Input
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <p>Cost (RM)</p>
+                    <Input
+                      value={cost}
+                      onChange={(e) => setCost(e.target.value)}
+                    />
+                  </div>
+                  <SheetFooter>
+                    <SheetClose asChild>
+                      <Button type="submit">Save changes</Button>
+                    </SheetClose>
+                  </SheetFooter>
+                </form>
+              </SheetContent>
+            </Sheet>
+
+            <DropdownMenuItem
+              className="space-x-2 px-2"
+              onClick={() => {
+                if (confirm("Are you sure?")) del.mutate({ id: item.id });
+              }}
+            >
+              <TrashIcon />
+              <span>Delete</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   );
 }
 
