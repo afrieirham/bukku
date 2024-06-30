@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TransactionType } from "~/constant";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { type dbType } from "~/server/db";
@@ -26,7 +27,8 @@ const recalculateTransaction = async (db: dbType, id: number) => {
     return;
   }
 
-  const cost = current.type === "sale" ? previous.costPerUnit : current.cost;
+  const cost =
+    current.type === TransactionType.Sale ? previous.costPerUnit : current.cost;
 
   const totalCost = Number(cost) * current.quantity;
   const totalQuantity = previous.totalQuantity + current.quantity;
@@ -158,7 +160,7 @@ const updatePurchaseOrSale = async (
   cost: number,
   type: string,
 ) => {
-  if (type === "purchase") {
+  if (type === TransactionType.Purchase) {
     await updatePurchaseWithNewValue(db, id, quantity, cost);
   } else {
     await updateSaleWithNewValue(db, id, quantity);
@@ -209,7 +211,7 @@ const defaultCreatePurchase = async (
   if (!previous) {
     return await db.transactions.create({
       data: {
-        type: "purchase",
+        type: TransactionType.Purchase,
         quantity: quantity,
         cost: cost,
         totalCost: totalCost,
@@ -229,7 +231,7 @@ const defaultCreatePurchase = async (
   // add new purchase
   const newPurchase = await db.transactions.create({
     data: {
-      type: "purchase",
+      type: TransactionType.Purchase,
       quantity: quantity,
       cost: cost,
       totalCost: totalCost,
@@ -269,7 +271,7 @@ const defaultCreateSale = async (db: dbType, quantity: number) => {
 
   const newSale = await db.transactions.create({
     data: {
-      type: "sale",
+      type: TransactionType.Sale,
       quantity: quantity,
       cost: previous.costPerUnit,
       totalCost: totalCost,
@@ -320,7 +322,7 @@ export const transactionRouter = createTRPCRouter({
         // create and update my next to head id
         const newPurchase = await ctx.db.transactions.create({
           data: {
-            type: "purchase",
+            type: TransactionType.Purchase,
             quantity: input.quantity,
             cost: input.cost,
             totalCost: totalCost,
@@ -386,7 +388,7 @@ export const transactionRouter = createTRPCRouter({
 
         const newPurchase = await ctx.db.transactions.create({
           data: {
-            type: "purchase",
+            type: TransactionType.Purchase,
             quantity: input.quantity,
             cost: input.cost,
             totalCost: totalCost,
@@ -469,7 +471,7 @@ export const transactionRouter = createTRPCRouter({
 
         const newSale = await ctx.db.transactions.create({
           data: {
-            type: "sale",
+            type: TransactionType.Sale,
             quantity: input.quantity,
             cost: previousCostPerUnit,
             totalCost: totalCost,
@@ -544,7 +546,9 @@ export const transactionRouter = createTRPCRouter({
 
   getAllPurchases: publicProcedure.query(async ({ ctx }) => {
     return (
-      await ctx.db.transactions.findMany({ where: { type: "purchase" } })
+      await ctx.db.transactions.findMany({
+        where: { type: TransactionType.Purchase },
+      })
     ).map((item) => ({
       ...item,
       cost: Number(item.cost),
@@ -555,7 +559,9 @@ export const transactionRouter = createTRPCRouter({
 
   getAllSales: publicProcedure.query(async ({ ctx }) => {
     return (
-      await ctx.db.transactions.findMany({ where: { type: "sale" } })
+      await ctx.db.transactions.findMany({
+        where: { type: TransactionType.Sale },
+      })
     ).map((item) => ({
       ...item,
       cost: Number(item.cost),

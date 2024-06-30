@@ -40,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
+import { TransactionType } from "~/constant";
 import { api, type RouterOutputs } from "~/utils/api";
 
 const formatter = (num: number | string | Prisma.Decimal, decimal: number) =>
@@ -151,13 +152,17 @@ function TransactionForm({ hasTransaction }: { hasTransaction: boolean }) {
                 <SelectValue placeholder="Transaction type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="purchase">Purchase</SelectItem>
-                {hasTransaction && <SelectItem value="sale">Sale</SelectItem>}
+                <SelectItem value={TransactionType.Purchase}>
+                  Purchase
+                </SelectItem>
+                {hasTransaction && (
+                  <SelectItem value={TransactionType.Sale}>Sale</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
-          {type === "purchase" && <PurchaseForm />}
-          {type === "sale" && <SaleForm />}
+          {type === TransactionType.Purchase && <PurchaseForm />}
+          {type === TransactionType.Sale && <SaleForm />}
         </div>
       </SheetContent>
     </Sheet>
@@ -351,7 +356,9 @@ function TransactionRow({ item }: { item: TransactionItem }) {
                   type: item.type,
                   cost: Number(cost),
                   quantity:
-                    item.type === "sale" ? -Number(quantity) : Number(quantity),
+                    item.type === TransactionType.Sale
+                      ? -Number(quantity)
+                      : Number(quantity),
                 })
               }
               className="mt-8 space-y-4 text-sm"
@@ -368,9 +375,9 @@ function TransactionRow({ item }: { item: TransactionItem }) {
                 <Input
                   value={cost}
                   onChange={(e) => setCost(e.target.value)}
-                  readOnly={item.type === "sale"}
+                  readOnly={item.type === TransactionType.Sale}
                   className={
-                    item.type === "sale"
+                    item.type === TransactionType.Sale
                       ? "bg-gray-100 focus-visible:ring-0"
                       : ""
                   }
