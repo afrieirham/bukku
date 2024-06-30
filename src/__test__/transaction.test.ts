@@ -194,6 +194,47 @@ describe("delete transaction", () => {
   });
 });
 
+describe("update transaction", () => {
+  test("update first transaction that affects purchases and sales", async () => {
+    await caller.transaction.createPurchase({
+      cost: 2,
+      quantity: 150,
+      position: 0,
+    });
+
+    const second = await caller.transaction.createPurchase({
+      cost: 1.5,
+      quantity: 10,
+      position: 0,
+    });
+    if (!second) return expect(true).toBe(false);
+
+    await caller.transaction.createSale({
+      quantity: -5,
+      position: 0,
+    });
+
+    await caller.transaction.updateTransaction({
+      id: second.id,
+      cost: 2,
+      quantity: 50,
+      type: TransactionType.Purchase,
+    });
+
+    await expectTransactionToBe({
+      type: TransactionType.Sale,
+      quantity: -5,
+      cost: "2.00",
+
+      totalQuantity: 195,
+      totalAsset: "390.00",
+      totalCostPerUnit: "2.00",
+
+      totalTransaction: 3,
+    });
+  });
+});
+
 const expectTransactionToBe = async ({
   type,
   quantity,
