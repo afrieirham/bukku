@@ -6,7 +6,11 @@
 ```
 npm install
 ```
-3. Start app in dev environment
+3. Run test
+```
+npm run test
+```
+4. Start app in dev environment
 ```
 npm run dev
 ```
