@@ -2,17 +2,23 @@
 
 ## Running the app
 1. Clone the repo
-2. Run `bun install`
-3. Run `bun run dev`
+2. Install dependencies
+```
+npm install
+```
+3. Start app in dev environment
+```
+npm run dev
+```
 
-## Demo
-1. Adding transactions.
+## System Demo
+1. Adding transactions (default behaviour).
 
-https://github.com/afrieirham/bukku/assets/32460534/1a0e9b69-06c7-4475-bf34-d6d700612276
+https://github.com/afrieirham/bukku/assets/32460534/824b4d36-6e39-4004-ae08-84e928abb29f
 
 2. Delete, edit, and add transaction in random order.
 
-https://github.com/afrieirham/bukku/assets/32460534/70afb561-8e00-4b4a-8bad-75793685e21e
+https://github.com/afrieirham/bukku/assets/32460534/07aaa0cc-97b6-4512-84d1-3527e5baa06d
 
 ## Technical Spec
 - Built with [T3 stack](https://create.t3.gg)
