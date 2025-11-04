@@ -13,7 +13,8 @@
     "postinstall": "prisma generate",
     "lint": "next lint",
     "start": "next start",
-    "test": "vitest"
+    "test": "vitest",
+    "both": "next dev & prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
